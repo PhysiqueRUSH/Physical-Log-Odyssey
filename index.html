@@ -11,52 +11,58 @@
     <style>
         body { -webkit-tap-highlight-color: transparent; }
         .hidden { display: none !important; }
-        .fade-in { animation: fadeIn 0.3s ease-in-out; }
+        .fade-in { animation: fadeIn 0.2s ease-in-out; }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        /* Toggle Switch */
+        
+        /* Toggle Switch Style */
         .toggle-checkbox:checked { right: 0; border-color: #2563eb; }
         .toggle-checkbox:checked + .toggle-label { background-color: #2563eb; }
-        /* Inputs cleanup */
-        input[type=number]::-webkit-inner-spin-button, 
-        input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+        
+        /* Tab Active State */
+        .tab-active { border-bottom: 2px solid #2563eb; color: #2563eb; font-weight: bold; }
+        .tab-inactive { color: #64748b; }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-800 h-screen flex flex-col font-sans">
 
-    <header class="bg-blue-600 text-white p-4 shadow-md z-10 flex justify-between items-center">
+    <header class="bg-blue-600 text-white p-4 shadow-md z-10 flex justify-between items-center transition-colors">
         <h1 class="text-xl font-bold tracking-wide">Physical Log Odyssey</h1>
-        <img src="./plo-ico.png" alt="Logo" class="w-8 h-8 rounded bg-white p-0.5">
+        <img src="./plo-ico.png" alt="Logo" class="w-8 h-8 rounded bg-white p-0.5 shadow-sm">
     </header>
 
     <main id="app" class="flex-1 overflow-y-auto p-4 pb-24 relative">
         </main>
 
-    <nav class="fixed bottom-0 w-full bg-white border-t border-slate-200 flex justify-around p-3 shadow-lg z-20 pb-safe">
-        <button onclick="router('log')" class="nav-btn flex flex-col items-center text-slate-500 hover:text-blue-600 transition" id="nav-log">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
-            <span class="text-xs mt-1">Saisie</span>
+    <nav class="fixed bottom-0 w-full bg-white border-t border-slate-200 flex justify-around p-3 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] z-20 pb-safe">
+        <button onclick="router('log')" class="nav-btn flex flex-col items-center text-slate-400 hover:text-blue-600 transition" id="nav-log">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+            <span class="text-[10px] mt-1 font-medium">Saisie</span>
         </button>
-        <button onclick="router('history')" class="nav-btn flex flex-col items-center text-slate-500 hover:text-blue-600 transition" id="nav-history">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg>
-            <span class="text-xs mt-1">Historique</span>
+        <button onclick="router('history')" class="nav-btn flex flex-col items-center text-slate-400 hover:text-blue-600 transition" id="nav-history">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+            <span class="text-[10px] mt-1 font-medium">Historique</span>
         </button>
-        <button onclick="router('stats')" class="nav-btn flex flex-col items-center text-slate-500 hover:text-blue-600 transition" id="nav-stats">
+        <button onclick="router('stats')" class="nav-btn flex flex-col items-center text-slate-400 hover:text-blue-600 transition" id="nav-stats">
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"></path></svg>
-            <span class="text-xs mt-1">Graphiques</span>
+            <span class="text-[10px] mt-1 font-medium">Graphiques</span>
         </button>
-        <button onclick="router('settings')" class="nav-btn flex flex-col items-center text-slate-500 hover:text-blue-600 transition" id="nav-settings">
+        <button onclick="router('settings')" class="nav-btn flex flex-col items-center text-slate-400 hover:text-blue-600 transition" id="nav-settings">
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
-            <span class="text-xs mt-1">Gestion</span>
+            <span class="text-[10px] mt-1 font-medium">Gestion</span>
         </button>
     </nav>
 
     <script>
-        // --- DATA ---
+        // --- DATA LAYER ---
         const DB_KEY = 'physical_log_odyssey_v1';
         let db = JSON.parse(localStorage.getItem(DB_KEY)) || { users: [], exercises: [], logs: [] };
-        const saveDb = () => localStorage.setItem(DB_KEY, JSON.stringify(db));
+        
+        const saveDb = () => {
+            localStorage.setItem(DB_KEY, JSON.stringify(db));
+            // Trigger UI updates indirectly via view re-renders
+        };
 
-        // --- UTILS ---
+        // --- MATH & UTILS ---
         const generateId = () => Date.now().toString(36) + Math.random().toString(36).substr(2);
         
         const calculate1RM = (weight, reps) => {
@@ -70,7 +76,6 @@
             return d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' });
         };
 
-        // Helper to get ISO week string "YYYY-Www" from a date string
         const getIsoWeek = (dateStr) => {
             const d = new Date(dateStr);
             const date = new Date(d.getTime());
@@ -81,43 +86,60 @@
             return `${date.getFullYear()}-W${week.toString().padStart(2, '0')}`;
         };
 
-        // Generates distinct colors based on index using Golden Angle
+        // Color Generator for graphs
         const getColor = (index) => {
             const hue = (index * 137.508) % 360; 
             return `hsl(${hue}, 70%, 50%)`;
         };
 
-        // --- ROUTER ---
+        // --- ROUTING ---
         const app = document.getElementById('app');
         let currentChart = null; 
-        let chartScaleZero = false;
+        
+        // State for Stats View
+        let statState = {
+            mode: 'compare', // 'compare' (Exo -> Tous les users) OR 'athlete' (User -> Tous les exos)
+            scaleZero: false,
+            selectedId: null // Stores either exId or userId depending on mode
+        };
 
         function highlightNav(route) {
-            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('text-blue-600'));
+            document.querySelectorAll('.nav-btn').forEach(b => {
+                b.classList.remove('text-blue-600');
+                b.classList.add('text-slate-400');
+            });
             const activeBtn = document.getElementById('nav-' + route);
-            if(activeBtn) activeBtn.classList.add('text-blue-600');
+            if(activeBtn) {
+                activeBtn.classList.remove('text-slate-400');
+                activeBtn.classList.add('text-blue-600');
+            }
         }
 
         function router(route) {
+            // Cleanup charts
+            if(currentChart) { currentChart.destroy(); currentChart = null; }
+            
             app.innerHTML = '';
             app.className = "flex-1 overflow-y-auto p-4 pb-24 relative fade-in";
             highlightNav(route);
+            
             if (route === 'log') renderLogView();
             else if (route === 'history') renderHistoryView();
             else if (route === 'stats') renderStatsView();
             else if (route === 'settings') renderSettingsView();
         }
 
-        // 1. LOG VIEW
+        // --- 1. LOG VIEW ---
         function renderLogView(editLogId = null) {
             if(db.users.length === 0 || db.exercises.length === 0) {
                 app.innerHTML = `
-                    <div class="flex flex-col items-center justify-center h-full text-center p-6">
-                        <div class="bg-yellow-100 text-yellow-800 p-6 rounded-lg shadow-sm">
-                            <p class="font-bold text-lg mb-2">Configuration requise</p>
-                            <p>Veuillez créer au moins un athlète et un exercice dans l'onglet <strong>Gestion</strong>.</p>
-                            <button onclick="router('settings')" class="mt-4 bg-blue-600 text-white px-4 py-2 rounded shadow">Allez à la Gestion</button>
+                    <div class="flex flex-col items-center justify-center h-full text-center p-6 space-y-4">
+                        <div class="p-4 bg-yellow-50 rounded-full text-yellow-500">
+                            <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
                         </div>
+                        <h2 class="text-xl font-bold text-slate-700">Bienvenue</h2>
+                        <p class="text-slate-500">Pour commencer, créez au moins un athlète et un exercice.</p>
+                        <button onclick="router('settings')" class="bg-blue-600 text-white px-6 py-3 rounded-xl shadow-lg font-semibold hover:bg-blue-700 transition">Aller à la Gestion</button>
                     </div>`;
                 return;
             }
@@ -126,66 +148,65 @@
             const today = new Date().toISOString().split('T')[0];
             
             const form = document.createElement('div');
-            form.className = "space-y-5 max-w-lg mx-auto";
+            form.className = "space-y-6 max-w-lg mx-auto";
             form.innerHTML = `
-                <h2 class="text-2xl font-bold text-slate-800 mb-6">${logToEdit ? 'Modifier Performance' : 'Nouvelle Performance'}</h2>
+                <h2 class="text-2xl font-bold text-slate-800">${logToEdit ? 'Modifier' : 'Nouvelle Performance'}</h2>
                 
-                <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-100 space-y-4">
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 space-y-4">
                     <div>
-                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1">Date</label>
-                        <input type="date" id="inputDate" value="${logToEdit ? logToEdit.date : today}" class="block w-full rounded-lg border-slate-200 bg-slate-50 p-3 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                        <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Date</label>
+                        <input type="date" id="inputDate" value="${logToEdit ? logToEdit.date : today}" class="block w-full rounded-lg bg-slate-50 border-transparent focus:border-blue-500 focus:bg-white focus:ring-0 text-slate-700 font-medium">
                     </div>
                     <div>
-                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1">Athlète</label>
-                        <select id="inputUser" class="block w-full rounded-lg border-slate-200 bg-slate-50 p-3 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                        <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Athlète</label>
+                        <select id="inputUser" class="block w-full rounded-lg bg-slate-50 border-transparent focus:border-blue-500 focus:bg-white focus:ring-0 text-slate-700 font-medium h-11">
                             ${db.users.map(u => `<option value="${u.id}" ${logToEdit && logToEdit.userId === u.id ? 'selected' : ''}>${u.name}</option>`).join('')}
                         </select>
                     </div>
                     <div>
-                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1">Exercice</label>
-                        <select id="inputEx" class="block w-full rounded-lg border-slate-200 bg-slate-50 p-3 focus:ring-2 focus:ring-blue-500 focus:outline-none" onchange="toggleInputs(this.value)">
-                             ${db.exercises.map(e => `<option value="${e.id}" data-type="${e.type}" ${logToEdit && logToEdit.exId === e.id ? 'selected' : ''}>${e.name} (${e.type === 'cardio' ? 'C' : 'M'})</option>`).join('')}
+                        <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Exercice</label>
+                        <select id="inputEx" class="block w-full rounded-lg bg-slate-50 border-transparent focus:border-blue-500 focus:bg-white focus:ring-0 text-slate-700 font-medium h-11" onchange="toggleInputs(this.value)">
+                             ${db.exercises.map(e => `<option value="${e.id}" data-type="${e.type}" ${logToEdit && logToEdit.exId === e.id ? 'selected' : ''}>${e.name}</option>`).join('')}
                         </select>
                     </div>
                 </div>
 
-                <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-100">
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
                     <div id="strengthInputs" class="grid grid-cols-2 gap-4">
                         <div>
-                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1">Poids (kg)</label>
-                            <input type="number" step="0.5" id="inputWeight" value="${logToEdit ? logToEdit.weight || '' : ''}" class="block w-full rounded-lg border-slate-200 bg-slate-50 p-3 font-mono text-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                            <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Poids (kg)</label>
+                            <input type="number" step="0.5" id="inputWeight" value="${logToEdit ? logToEdit.weight || '' : ''}" class="block w-full text-center text-2xl font-bold rounded-lg bg-slate-50 border-transparent focus:border-blue-500 focus:bg-white focus:ring-0 text-blue-600" placeholder="0">
                         </div>
                         <div>
-                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1">Répétitions</label>
-                            <input type="number" id="inputReps" value="${logToEdit ? logToEdit.reps || '' : ''}" class="block w-full rounded-lg border-slate-200 bg-slate-50 p-3 font-mono text-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                            <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Répétitions</label>
+                            <input type="number" id="inputReps" value="${logToEdit ? logToEdit.reps || '' : ''}" class="block w-full text-center text-2xl font-bold rounded-lg bg-slate-50 border-transparent focus:border-blue-500 focus:bg-white focus:ring-0 text-blue-600" placeholder="0">
                         </div>
                     </div>
                     <div id="cardioInputs" class="hidden">
-                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1">Distance (km)</label>
-                        <input type="number" step="0.01" id="inputDist" placeholder="ex: 1.68" value="${logToEdit ? logToEdit.distance || '' : ''}" class="block w-full rounded-lg border-slate-200 bg-slate-50 p-3 font-mono text-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                        <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Distance (km)</label>
+                        <input type="number" step="0.01" id="inputDist" value="${logToEdit ? logToEdit.distance || '' : ''}" class="block w-full text-center text-2xl font-bold rounded-lg bg-slate-50 border-transparent focus:border-blue-500 focus:bg-white focus:ring-0 text-green-600" placeholder="0.00">
                     </div>
-                    <div id="rmPreview" class="mt-4 p-3 bg-blue-50 rounded-lg text-center hidden">
-                        <span class="text-sm text-blue-600 font-semibold">Max Théorique (Epley)</span>
-                        <div class="text-2xl font-bold text-blue-800"><span id="rmValue">--</span> <span class="text-sm">kg</span></div>
+                    <div id="rmPreview" class="mt-4 pt-4 border-t border-slate-100 text-center hidden">
+                        <span class="text-xs uppercase font-bold text-slate-400">Max Théorique (Epley)</span>
+                        <div class="text-3xl font-black text-slate-800 tracking-tighter"><span id="rmValue">--</span> <span class="text-lg font-medium text-slate-400">kg</span></div>
                     </div>
                 </div>
 
-                <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-100">
-                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1">Commentaire</label>
-                    <textarea id="inputComment" rows="2" class="block w-full rounded-lg border-slate-200 bg-slate-50 p-3 focus:ring-2 focus:ring-blue-500 focus:outline-none">${logToEdit ? logToEdit.comment || '' : ''}</textarea>
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
+                    <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Commentaire</label>
+                    <textarea id="inputComment" rows="2" class="block w-full rounded-lg bg-slate-50 border-transparent focus:border-blue-500 focus:bg-white focus:ring-0 text-slate-700">${logToEdit ? logToEdit.comment || '' : ''}</textarea>
                 </div>
 
-                <div class="pt-2">
-                    <button id="saveBtn" class="w-full bg-blue-600 text-white font-bold py-4 px-4 rounded-xl shadow-lg hover:bg-blue-700 transition transform active:scale-95 flex justify-center items-center gap-2">
+                <div class="pt-2 flex gap-3">
+                    ${logToEdit ? `<button onclick="router('history')" class="flex-1 bg-slate-100 text-slate-500 font-bold py-4 rounded-xl hover:bg-slate-200 transition">Annuler</button>` : ''}
+                    <button id="saveBtn" class="flex-[2] bg-blue-600 text-white font-bold py-4 rounded-xl shadow-lg shadow-blue-200 hover:bg-blue-700 transition transform active:scale-95 flex justify-center items-center gap-2">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
                         <span>${logToEdit ? 'Mettre à jour' : 'Enregistrer'}</span>
                     </button>
-                    ${logToEdit ? `<button onclick="router('history')" class="w-full text-slate-500 mt-4 py-2 hover:text-red-500 transition">Annuler</button>` : ''}
                 </div>
             `;
             app.appendChild(form);
 
-            // Inputs Logic
             const exSelect = document.getElementById('inputEx');
             const wInput = document.getElementById('inputWeight');
             const rInput = document.getElementById('inputReps');
@@ -220,10 +241,7 @@
             wInput.addEventListener('input', updateRM);
             rInput.addEventListener('input', updateRM);
             
-            if(db.exercises.length > 0) {
-                toggleInputs(exSelect.value); 
-                updateRM();
-            }
+            if(db.exercises.length > 0) { toggleInputs(exSelect.value); updateRM(); }
 
             document.getElementById('saveBtn').onclick = () => {
                 const exId = exSelect.value;
@@ -241,7 +259,7 @@
                     newLog.weight = parseFloat(wInput.value);
                     newLog.reps = parseFloat(rInput.value);
                     newLog.rm1 = calculate1RM(newLog.weight, newLog.reps);
-                    if(!newLog.weight || !newLog.reps) { alert("Champs Poids/Reps requis"); return; }
+                    if(!newLog.weight || !newLog.reps) { alert("Poids et Répétitions requis"); return; }
                 } else {
                     newLog.distance = parseFloat(document.getElementById('inputDist').value);
                     if(!newLog.distance) { alert("Distance requise"); return; }
@@ -257,29 +275,24 @@
             };
         }
 
-        // 2. HISTORY VIEW (Avec Filtres)
+        // --- 2. HISTORY VIEW ---
         function renderHistoryView() {
             const container = document.createElement('div');
-            container.className = "max-w-lg mx-auto pb-10";
-            
-            // Header + Filters
+            container.className = "max-w-lg mx-auto pb-6";
             container.innerHTML = `
-                <h2 class="text-2xl font-bold text-slate-800 mb-4">Historique</h2>
-                
+                <h2 class="text-2xl font-bold text-slate-800 mb-4 sticky top-0 bg-slate-50 z-10 py-2">Historique</h2>
                 <div class="bg-white p-3 rounded-xl shadow-sm border border-slate-100 mb-4 grid grid-cols-2 gap-2">
                     <div>
-                        <label class="text-[10px] uppercase font-bold text-slate-400">Filtrer par Mois</label>
-                        <input type="month" id="filterMonth" class="w-full text-sm p-1 bg-slate-50 border border-slate-200 rounded">
+                        <label class="text-[10px] uppercase font-bold text-slate-400">Mois</label>
+                        <input type="month" id="filterMonth" class="w-full text-sm p-1.5 bg-slate-50 border-none rounded focus:ring-2 focus:ring-blue-100">
                     </div>
                     <div>
-                        <label class="text-[10px] uppercase font-bold text-slate-400">Filtrer par Semaine</label>
-                        <input type="week" id="filterWeek" class="w-full text-sm p-1 bg-slate-50 border border-slate-200 rounded">
+                        <label class="text-[10px] uppercase font-bold text-slate-400">Semaine</label>
+                        <input type="week" id="filterWeek" class="w-full text-sm p-1.5 bg-slate-50 border-none rounded focus:ring-2 focus:ring-blue-100">
                     </div>
-                    <button id="clearFilters" class="col-span-2 text-xs text-blue-600 font-semibold py-1 border border-blue-100 bg-blue-50 rounded mt-1 hidden">
-                        Voir tout l'historique
-                    </button>
+                    <button id="clearFilters" class="col-span-2 text-xs text-blue-600 font-semibold py-2 border border-blue-100 bg-blue-50 rounded mt-1 hidden">Réinitialiser les filtres</button>
                 </div>
-                <div id="logsList"></div>
+                <div id="logsList" class="space-y-3"></div>
             `;
             app.appendChild(container);
 
@@ -291,45 +304,38 @@
             const renderLogs = (logs) => {
                 logsListEl.innerHTML = '';
                 if(logs.length === 0) {
-                    logsListEl.innerHTML = `<p class="text-center text-slate-400 py-6 italic">Aucune donnée pour cette sélection.</p>`;
+                    logsListEl.innerHTML = `<div class="text-center text-slate-400 py-10 italic">Aucune donnée trouvée.</div>`;
                     return;
                 }
                 logs.forEach(log => {
                     const user = db.users.find(u => u.id === log.userId)?.name || 'Inconnu';
                     const ex = db.exercises.find(e => e.id === log.exId);
-                    const exName = ex?.name || 'Supprimé';
                     
-                    let details, badge;
+                    let content, badge;
                     if(ex && ex.type === 'strength') {
-                        details = `<span class="text-lg font-bold text-slate-800">${log.weight}kg <span class="text-sm text-slate-500 font-normal">x ${log.reps}</span></span>`;
-                        if(log.rm1) details += `<div class="text-xs text-blue-600 font-bold mt-1">RM: ${log.rm1}kg</div>`;
-                        badge = `<span class="bg-blue-100 text-blue-800 text-[10px] font-bold px-2 py-0.5 rounded-full">MUSCU</span>`;
+                        content = `<div class="flex items-baseline gap-1"><span class="text-lg font-bold text-slate-800">${log.weight}kg</span> <span class="text-sm text-slate-500">x ${log.reps}</span></div>`;
+                        if(log.rm1) content += `<div class="text-xs text-blue-600 font-bold mt-0.5">RM: ${log.rm1}</div>`;
+                        badge = 'bg-blue-100 text-blue-700';
                     } else {
-                        // FORCE 2 decimals for display
-                        details = `<span class="text-lg font-bold text-slate-800">${log.distance.toFixed(2)} km</span>`;
-                        badge = `<span class="bg-green-100 text-green-800 text-[10px] font-bold px-2 py-0.5 rounded-full">CARDIO</span>`;
+                        content = `<div class="text-lg font-bold text-slate-800">${log.distance ? log.distance.toFixed(2) : '--'} km</div>`;
+                        badge = 'bg-green-100 text-green-700';
                     }
 
                     const card = document.createElement('div');
-                    card.className = "bg-white p-4 rounded-xl shadow-sm border border-slate-100 mb-4 relative overflow-hidden";
+                    card.className = "bg-white p-4 rounded-xl shadow-[0_2px_8px_-2px_rgba(0,0,0,0.05)] border border-slate-100 flex justify-between items-center group";
                     card.innerHTML = `
-                        <div class="flex justify-between items-start mb-2">
-                            <div class="flex items-center gap-2">
-                                <span class="text-xs font-semibold text-slate-400">${formatDate(log.date)}</span>
-                                <span class="text-xs font-bold text-slate-600 px-2 py-0.5 bg-slate-100 rounded">${user}</span>
+                        <div class="flex-1">
+                            <div class="flex items-center gap-2 mb-1">
+                                <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">${formatDate(log.date)}</span>
+                                <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase ${badge}">${user}</span>
                             </div>
-                            ${badge}
+                            <div class="font-bold text-slate-700 leading-tight">${ex ? ex.name : 'Exercice supprimé'}</div>
+                            <div class="mt-1">${content}</div>
+                            ${log.comment ? `<div class="mt-2 text-xs text-slate-500 italic border-l-2 border-slate-200 pl-2">"${log.comment}"</div>` : ''}
                         </div>
-                        <div class="flex justify-between items-end">
-                            <div>
-                                <h3 class="font-bold text-slate-700 text-base mb-1 leading-tight">${exName}</h3>
-                                ${details}
-                                ${log.comment ? `<p class="mt-2 text-sm text-slate-500 italic border-l-2 border-slate-200 pl-2">"${log.comment}"</p>` : ''}
-                            </div>
-                            <div class="flex gap-3">
-                                <button onclick="deleteLog('${log.id}')" class="p-2 text-red-300 hover:text-red-500"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></button>
-                                <button onclick="editLog('${log.id}')" class="p-2 text-blue-400 hover:text-blue-600"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg></button>
-                            </div>
+                        <div class="flex flex-col gap-2 pl-4 border-l border-slate-50">
+                            <button onclick="editLog('${log.id}')" class="p-1.5 text-blue-400 hover:text-blue-600 bg-blue-50 rounded-lg"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg></button>
+                            <button onclick="deleteLog('${log.id}')" class="p-1.5 text-red-300 hover:text-red-500 bg-red-50 rounded-lg"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></button>
                         </div>
                     `;
                     logsListEl.appendChild(card);
@@ -338,225 +344,252 @@
 
             const applyFilters = () => {
                 let filtered = [...db.logs].sort((a,b) => new Date(b.date) - new Date(a.date));
-                const monthVal = filterMonthEl.value;
-                const weekVal = filterWeekEl.value;
-
-                if (monthVal) {
-                    filtered = filtered.filter(l => l.date.substring(0, 7) === monthVal);
-                    filterWeekEl.value = ''; // Reset week if month selected
+                if (filterMonthEl.value) {
+                    filtered = filtered.filter(l => l.date.startsWith(filterMonthEl.value));
+                    filterWeekEl.value = '';
                     clearBtn.classList.remove('hidden');
-                } else if (weekVal) {
-                    filtered = filtered.filter(l => getIsoWeek(l.date) === weekVal);
-                    filterMonthEl.value = ''; // Reset month if week selected
+                } else if (filterWeekEl.value) {
+                    filtered = filtered.filter(l => getIsoWeek(l.date) === filterWeekEl.value);
+                    filterMonthEl.value = '';
                     clearBtn.classList.remove('hidden');
-                } else {
-                    clearBtn.classList.add('hidden');
-                }
+                } else clearBtn.classList.add('hidden');
                 renderLogs(filtered);
             };
 
             filterMonthEl.addEventListener('change', applyFilters);
             filterWeekEl.addEventListener('change', applyFilters);
-            clearBtn.addEventListener('click', () => {
-                filterMonthEl.value = '';
-                filterWeekEl.value = '';
-                applyFilters();
-            });
-
-            // Initial render
+            clearBtn.addEventListener('click', () => { filterMonthEl.value = ''; filterWeekEl.value = ''; applyFilters(); });
             applyFilters();
         }
 
         window.editLog = (id) => renderLogView(id);
-        window.deleteLog = (id) => {
-            if(confirm("Supprimer ?")) {
-                db.logs = db.logs.filter(l => l.id !== id);
-                saveDb();
-                router('history');
-            }
-        };
+        window.deleteLog = (id) => { if(confirm("Supprimer ?")) { db.logs = db.logs.filter(l => l.id !== id); saveDb(); router('history'); }};
 
-        // 3. STATS VIEW (Multi-User Charts)
+        // --- 3. STATS VIEW (Advanced) ---
         function renderStatsView() {
             const container = document.createElement('div');
-            container.className = "max-w-lg mx-auto h-full flex flex-col space-y-4";
+            container.className = "max-w-lg mx-auto flex flex-col h-full";
             
-            container.innerHTML = `<h2 class="text-2xl font-bold text-slate-800">Comparateur</h2>`;
-            if(db.logs.length === 0) {
-                 container.innerHTML += `<p class="text-slate-500">Aucune donnée disponible.</p>`;
-                 app.appendChild(container); return;
-            }
-
-            // Controls (Exercise Only)
-            const controls = document.createElement('div');
-            controls.className = "bg-white p-4 rounded-xl shadow-sm border border-slate-100";
-            controls.innerHTML = `
-                 <label class="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1">Choisir l'exercice</label>
-                 <select id="statEx" class="block w-full rounded-lg border-slate-200 bg-slate-50 p-2 text-sm focus:ring-2 focus:ring-blue-500 mb-3">
-                    ${db.exercises.filter(e => e.type === 'strength').map(e => `<option value="${e.id}">${e.name}</option>`).join('')}
-                 </select>
+            // Header with Tabs
+            container.innerHTML = `
+                <h2 class="text-2xl font-bold text-slate-800 mb-4">Analyse</h2>
                 
-                <div class="flex items-center justify-between border-t border-slate-100 pt-3">
-                    <span class="text-sm font-medium text-slate-600">Échelle Graphique</span>
-                    <div class="flex items-center">
-                        <span class="mr-2 text-xs text-slate-400">${chartScaleZero ? 'Absolu (0)' : 'Zoomé'}</span>
-                        <div class="relative inline-block w-10 mr-2 align-middle select-none">
-                            <input type="checkbox" id="scaleToggle" class="toggle-checkbox absolute block w-5 h-5 rounded-full bg-white border-4 appearance-none cursor-pointer border-slate-300" ${chartScaleZero ? 'checked' : ''}/>
-                            <label for="scaleToggle" class="toggle-label block overflow-hidden h-5 rounded-full bg-slate-300 cursor-pointer"></label>
+                <div class="flex border-b border-slate-200 mb-4">
+                    <button id="tabCompare" class="flex-1 pb-2 text-sm font-medium transition ${statState.mode === 'compare' ? 'tab-active' : 'tab-inactive'}">
+                        Comparatif
+                    </button>
+                    <button id="tabAthlete" class="flex-1 pb-2 text-sm font-medium transition ${statState.mode === 'athlete' ? 'tab-active' : 'tab-inactive'}">
+                        Par Athlète
+                    </button>
+                </div>
+
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100 mb-4">
+                    <div id="selectionArea"></div>
+                    
+                    <div class="flex items-center justify-between border-t border-slate-100 pt-3 mt-3">
+                        <span class="text-xs font-semibold text-slate-400 uppercase">Échelle Y</span>
+                        <div class="flex items-center cursor-pointer" onclick="document.getElementById('scaleToggle').click()">
+                            <span class="mr-2 text-xs font-bold text-slate-600" id="scaleLabel">${statState.scaleZero ? '0' : 'Zoom'}</span>
+                            <div class="relative inline-block w-10 align-middle select-none">
+                                <input type="checkbox" id="scaleToggle" class="toggle-checkbox absolute block w-5 h-5 rounded-full bg-white border-4 appearance-none cursor-pointer border-slate-300" ${statState.scaleZero ? 'checked' : ''}/>
+                                <label for="scaleToggle" class="toggle-label block overflow-hidden h-5 rounded-full bg-slate-300 cursor-pointer"></label>
+                            </div>
                         </div>
                     </div>
                 </div>
-            `;
-            container.appendChild(controls);
 
-            // Chart
-            const chartWrapper = document.createElement('div');
-            chartWrapper.className = "bg-white p-2 rounded-xl shadow-md flex-1 relative min-h-[400px] border border-slate-100";
-            chartWrapper.innerHTML = `<canvas id="perfChart"></canvas>`;
-            container.appendChild(chartWrapper);
+                <div class="bg-white p-2 rounded-xl shadow-lg border border-slate-100 flex-1 relative min-h-[300px]">
+                    <canvas id="perfChart"></canvas>
+                </div>
+            `;
             app.appendChild(container);
 
-            const ctx = document.getElementById('perfChart').getContext('2d');
+            // Tab Logic
+            document.getElementById('tabCompare').onclick = () => { statState.mode = 'compare'; statState.selectedId = null; renderStatsView(); };
+            document.getElementById('tabAthlete').onclick = () => { statState.mode = 'athlete'; statState.selectedId = null; renderStatsView(); };
             
+            // Selection Logic based on Mode
+            const selectionArea = document.getElementById('selectionArea');
+            const searchInputId = 'statSearch';
+            const selectId = 'statSelect';
+
+            // Filter Helper
+            window.filterOptions = (input) => {
+                const term = input.value.toLowerCase();
+                const select = document.getElementById(selectId);
+                Array.from(select.options).forEach(opt => {
+                    const txt = opt.text.toLowerCase();
+                    opt.hidden = !txt.includes(term);
+                });
+            };
+
+            if (statState.mode === 'compare') {
+                // Mode: Choose Exercise -> Show All Users
+                const defaultEx = db.exercises.length > 0 ? db.exercises[0].id : '';
+                if (!statState.selectedId && defaultEx) statState.selectedId = defaultEx;
+
+                selectionArea.innerHTML = `
+                    <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Choisir l'exercice</label>
+                    <input type="text" id="${searchInputId}" placeholder="Rechercher..." class="block w-full text-sm mb-2 p-2 rounded bg-slate-50 border-none" oninput="filterOptions(this)">
+                    <select id="${selectId}" class="block w-full rounded-lg border-slate-200 bg-white p-2 text-sm font-semibold">
+                        ${db.exercises.filter(e => e.type === 'strength').map(e => `<option value="${e.id}" ${statState.selectedId === e.id ? 'selected' : ''}>${e.name}</option>`).join('')}
+                    </select>
+                `;
+            } else {
+                // Mode: Choose User -> Show All Exercises
+                const defaultUser = db.users.length > 0 ? db.users[0].id : '';
+                if (!statState.selectedId && defaultUser) statState.selectedId = defaultUser;
+
+                selectionArea.innerHTML = `
+                    <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Choisir l'athlète</label>
+                    <input type="text" id="${searchInputId}" placeholder="Rechercher..." class="block w-full text-sm mb-2 p-2 rounded bg-slate-50 border-none" oninput="filterOptions(this)">
+                    <select id="${selectId}" class="block w-full rounded-lg border-slate-200 bg-white p-2 text-sm font-semibold">
+                         ${db.users.map(u => `<option value="${u.id}" ${statState.selectedId === u.id ? 'selected' : ''}>${u.name}</option>`).join('')}
+                    </select>
+                `;
+            }
+
+            // Chart Render Logic
+            const ctx = document.getElementById('perfChart').getContext('2d');
             const updateChart = () => {
-                const exId = document.getElementById('statEx').value;
-                const exName = db.exercises.find(e => e.id === exId)?.name;
+                const select = document.getElementById(selectId);
+                if (!select || !select.value) return;
                 
-                // DATA PREPARATION FOR MULTI-USER
+                statState.selectedId = select.value;
                 const datasets = [];
                 let allLabels = new Set();
 
-                db.users.forEach((user, index) => {
-                    // Filter logs for this user AND this exercise
-                    const userLogs = db.logs
-                        .filter(l => l.userId === user.id && l.exId === exId && l.rm1 > 0)
-                        .sort((a,b) => new Date(a.date) - new Date(b.date));
+                if (statState.mode === 'compare') {
+                    // One Exercise, Multiple Users
+                    const exId = statState.selectedId;
+                    const exName = db.exercises.find(e => e.id === exId)?.name;
                     
-                    if(userLogs.length >= 1) {
-                        userLogs.forEach(l => allLabels.add(l.date));
-                        datasets.push({
-                            label: user.name,
-                            data: userLogs.map(l => ({x: l.date, y: l.rm1})), // Use Object for sparse data
-                            borderColor: getColor(index),
-                            backgroundColor: getColor(index),
-                            borderWidth: 2,
-                            pointRadius: 4,
-                            tension: 0.3,
-                            fill: false
-                        });
-                    }
-                });
+                    db.users.forEach((user, idx) => {
+                        const logs = db.logs.filter(l => l.userId === user.id && l.exId === exId && l.rm1 > 0).sort((a,b) => new Date(a.date) - new Date(b.date));
+                        if(logs.length > 0) {
+                            logs.forEach(l => allLabels.add(l.date));
+                            datasets.push({
+                                label: user.name,
+                                data: logs.map(l => ({x: l.date, y: l.rm1})),
+                                borderColor: getColor(idx),
+                                backgroundColor: getColor(idx),
+                                tension: 0.3,
+                                pointRadius: 3
+                            });
+                        }
+                    });
+                } else {
+                    // One User, Multiple Exercises
+                    const userId = statState.selectedId;
+                    
+                    db.exercises.filter(e => e.type === 'strength').forEach((ex, idx) => {
+                        const logs = db.logs.filter(l => l.userId === userId && l.exId === ex.id && l.rm1 > 0).sort((a,b) => new Date(a.date) - new Date(b.date));
+                        if(logs.length > 0) {
+                            logs.forEach(l => allLabels.add(l.date));
+                            datasets.push({
+                                label: ex.name,
+                                data: logs.map(l => ({x: l.date, y: l.rm1})),
+                                borderColor: getColor(idx),
+                                backgroundColor: getColor(idx),
+                                tension: 0.3,
+                                pointRadius: 3
+                            });
+                        }
+                    });
+                }
 
-                // Sort labels chronologically
                 const sortedLabels = Array.from(allLabels).sort((a,b) => new Date(a) - new Date(b));
-
+                
                 if(currentChart) currentChart.destroy();
-
                 currentChart = new Chart(ctx, {
                     type: 'line',
-                    data: {
-                        labels: sortedLabels.map(d => formatDate(d)),
-                        datasets: datasets
-                    },
+                    data: { labels: sortedLabels.map(d => formatDate(d)), datasets },
                     options: {
                         responsive: true,
                         maintainAspectRatio: false,
-                        interaction: {
-                            mode: 'index',
-                            intersect: false,
-                        },
+                        interaction: { mode: 'nearest', intersect: false },
                         plugins: {
-                            legend: { 
-                                display: true,
-                                position: 'bottom',
-                                labels: { usePointStyle: true, boxWidth: 8 }
-                            },
-                            title: {
-                                display: true,
-                                text: datasets.length === 0 ? 'Aucune donnée' : `Comparatif : ${exName}`,
-                                font: { size: 14 }
-                            },
-                            tooltip: {
-                                callbacks: {
-                                    title: (ctx) => ctx[0].label // Show date
-                                }
-                            }
+                            legend: { display: true, position: 'bottom', labels: { boxWidth: 10, padding: 10, font: { size: 10 } } },
+                            tooltip: { callbacks: { title: (c) => c[0].label } }
                         },
                         scales: {
-                            y: { 
-                                beginAtZero: chartScaleZero,
-                                title: { display: true, text: 'Max Estimé (kg)' }
-                            },
-                            x: {
-                                type: 'category', // Simple category scale using sorted unique dates
-                                labels: sortedLabels.map(d => formatDate(d))
-                            }
+                            x: { grid: { display: false } },
+                            y: { beginAtZero: statState.scaleZero }
                         }
                     }
                 });
             };
 
-            // Events
-            document.getElementById('statEx').addEventListener('change', updateChart);
+            document.getElementById(selectId).addEventListener('change', updateChart);
             document.getElementById('scaleToggle').addEventListener('change', (e) => {
-                chartScaleZero = e.target.checked;
-                e.target.parentNode.previousElementSibling.textContent = chartScaleZero ? 'Absolu (0)' : 'Zoomé';
+                statState.scaleZero = e.target.checked;
+                document.getElementById('scaleLabel').innerText = statState.scaleZero ? '0' : 'Zoom';
                 updateChart();
             });
 
-            if(db.exercises.some(e => e.type === 'strength')) updateChart();
+            updateChart();
         }
 
-        // 4. SETTINGS VIEW
+        // --- 4. SETTINGS VIEW (Realtime & Retroactive) ---
         function renderSettingsView() {
             const container = document.createElement('div');
-            container.className = "max-w-lg mx-auto space-y-6";
-            
-            container.innerHTML = `<h2 class="text-2xl font-bold text-slate-800 mb-2">Gestion</h2>`;
+            container.className = "max-w-lg mx-auto space-y-6 pb-8";
+            container.innerHTML = `<h2 class="text-2xl font-bold text-slate-800 mb-2">Gestion Données</h2>`;
 
             // Users
-            const userSection = document.createElement('div');
-            userSection.className = "bg-white p-5 rounded-xl shadow-sm border border-slate-100";
-            userSection.innerHTML = `
+            const userBox = document.createElement('div');
+            userBox.className = "bg-white p-5 rounded-xl shadow-sm border border-slate-100";
+            userBox.innerHTML = `
                 <h3 class="font-bold text-slate-700 mb-3">Athlètes</h3>
                 <div class="flex gap-2 mb-4">
-                    <input type="text" id="newUserName" placeholder="Nom..." class="flex-1 rounded-lg border-slate-200 bg-slate-50 p-2 text-sm">
-                    <button id="addUserBtn" class="bg-green-600 text-white px-3 py-2 rounded-lg">+</button>
+                    <input type="text" id="newUserName" placeholder="Nom..." class="flex-1 rounded-lg bg-slate-50 border-none text-sm p-2 focus:ring-2 focus:ring-green-500">
+                    <button id="addUserBtn" class="bg-green-500 text-white rounded-lg px-3 hover:bg-green-600 transition shadow-sm font-bold">+</button>
                 </div>
-                <ul class="space-y-2 max-h-48 overflow-y-auto">
+                <ul class="space-y-2 max-h-60 overflow-y-auto custom-scrollbar">
                     ${db.users.map(u => `
-                        <li class="flex justify-between items-center bg-slate-50 p-2 rounded-lg border border-slate-100">
+                        <li class="flex justify-between items-center bg-slate-50 p-3 rounded-lg border border-slate-100 group">
                             <span class="font-medium text-slate-700">${u.name}</span>
-                            <button onclick="deleteUser('${u.id}')" class="text-red-300 hover:text-red-500">Suppr.</button>
+                            <div class="flex gap-2 opacity-100">
+                                <button onclick="renameUser('${u.id}')" class="text-slate-400 hover:text-blue-500"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg></button>
+                                <button onclick="deleteUser('${u.id}')" class="text-slate-400 hover:text-red-500"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></button>
+                            </div>
                         </li>
                     `).join('')}
+                    ${db.users.length === 0 ? '<li class="text-center text-xs text-slate-400 italic">Aucun athlète</li>' : ''}
                 </ul>`;
-            container.appendChild(userSection);
+            container.appendChild(userBox);
 
             // Exercises
-            const exSection = document.createElement('div');
-            exSection.className = "bg-white p-5 rounded-xl shadow-sm border border-slate-100";
-            exSection.innerHTML = `
+            const exBox = document.createElement('div');
+            exBox.className = "bg-white p-5 rounded-xl shadow-sm border border-slate-100";
+            exBox.innerHTML = `
                 <h3 class="font-bold text-slate-700 mb-3">Exercices</h3>
                 <div class="flex gap-2 mb-2">
-                    <input type="text" id="newExName" placeholder="Nom..." class="flex-1 rounded-lg border-slate-200 bg-slate-50 p-2 text-sm">
-                    <select id="newExType" class="rounded-lg border-slate-200 bg-slate-50 p-2 text-sm">
+                    <input type="text" id="newExName" placeholder="Nom..." class="flex-1 rounded-lg bg-slate-50 border-none text-sm p-2 focus:ring-2 focus:ring-blue-500">
+                    <select id="newExType" class="rounded-lg bg-slate-50 border-none text-sm p-2">
                         <option value="strength">Muscu</option>
                         <option value="cardio">Cardio</option>
                     </select>
                 </div>
-                <button id="addExBtn" class="w-full bg-blue-600 text-white p-2 rounded-lg text-sm font-semibold mb-4">Ajouter</button>
-                <ul class="space-y-2 max-h-48 overflow-y-auto">
+                <button id="addExBtn" class="w-full bg-blue-600 text-white rounded-lg p-2 text-sm font-bold mb-4 shadow hover:bg-blue-700 transition">Ajouter</button>
+                <ul class="space-y-2 max-h-60 overflow-y-auto custom-scrollbar">
                     ${db.exercises.map(e => `
-                        <li class="flex justify-between items-center bg-slate-50 p-2 rounded-lg border border-slate-100">
-                            <div><span class="font-medium text-slate-700">${e.name}</span> <span class="text-[10px] uppercase text-slate-400">${e.type === 'cardio' ? 'C' : 'M'}</span></div>
-                            <button onclick="deleteExercise('${e.id}')" class="text-red-300 hover:text-red-500">Suppr.</button>
+                        <li class="flex justify-between items-center bg-slate-50 p-3 rounded-lg border border-slate-100">
+                            <div>
+                                <div class="font-medium text-slate-700">${e.name}</div>
+                                <div class="text-[10px] uppercase font-bold text-slate-400">${e.type === 'cardio' ? 'Cardio' : 'Muscu'}</div>
+                            </div>
+                            <div class="flex gap-2">
+                                <button onclick="renameExercise('${e.id}')" class="text-slate-400 hover:text-blue-500"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg></button>
+                                <button onclick="deleteExercise('${e.id}')" class="text-slate-400 hover:text-red-500"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></button>
+                            </div>
                         </li>
                     `).join('')}
+                    ${db.exercises.length === 0 ? '<li class="text-center text-xs text-slate-400 italic">Aucun exercice</li>' : ''}
                 </ul>`;
-            container.appendChild(exSection);
+            container.appendChild(exBox);
             
-            container.innerHTML += `<div class="text-center text-xs text-slate-400 mt-6">v4.0 • Epley • Multi-Graph</div>`;
+            container.innerHTML += `<div class="text-center text-[10px] text-slate-300 mt-4 font-mono">v5.0 • LocalStorage</div>`;
             app.appendChild(container);
 
             // Handlers
@@ -570,23 +603,35 @@
                 if(name) { db.exercises.push({ id: generateId(), name, type }); saveDb(); renderSettingsView(); }
             };
 
+            // GLOBAL ACTIONS (Available to onclick)
             window.deleteUser = (id) => {
-                if(confirm("Supprimer l'athlète et tout son historique ?")) {
+                if(confirm("Supprimer l'athlète et TOUT son historique ?")) {
                     db.users = db.users.filter(u => u.id !== id);
                     db.logs = db.logs.filter(l => l.userId !== id);
                     saveDb(); renderSettingsView();
                 }
             };
+            window.renameUser = (id) => {
+                const u = db.users.find(u => u.id === id);
+                const newName = prompt("Nouveau nom :", u.name);
+                if(newName && newName !== u.name) { u.name = newName; saveDb(); renderSettingsView(); }
+            };
+            
             window.deleteExercise = (id) => {
-                if(confirm("Supprimer l'exercice et historique associé ?")) {
+                if(confirm("Supprimer l'exercice et TOUT son historique ?")) {
                     db.exercises = db.exercises.filter(e => e.id !== id);
                     db.logs = db.logs.filter(l => l.exId !== id);
                     saveDb(); renderSettingsView();
                 }
             };
+            window.renameExercise = (id) => {
+                const e = db.exercises.find(e => e.id === id);
+                const newName = prompt("Nouveau nom :", e.name);
+                if(newName && newName !== e.name) { e.name = newName; saveDb(); renderSettingsView(); }
+            };
         }
 
-        // SW Init
+        // --- INIT ---
         if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js');
         router('log');
     </script>
