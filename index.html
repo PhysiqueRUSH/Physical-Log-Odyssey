@@ -21,6 +21,11 @@
         /* Tab Active State */
         .tab-active { border-bottom: 2px solid #2563eb; color: #2563eb; font-weight: bold; }
         .tab-inactive { color: #64748b; }
+
+        /* Custom Scrollbar for lists */
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-800 h-screen flex flex-col font-sans">
@@ -59,7 +64,6 @@
         
         const saveDb = () => {
             localStorage.setItem(DB_KEY, JSON.stringify(db));
-            // Trigger UI updates indirectly via view re-renders
         };
 
         // --- MATH & UTILS ---
@@ -451,6 +455,7 @@
 
             // Chart Render Logic
             const ctx = document.getElementById('perfChart').getContext('2d');
+            
             const updateChart = () => {
                 const select = document.getElementById(selectId);
                 if (!select || !select.value) return;
@@ -459,51 +464,65 @@
                 const datasets = [];
                 let allLabels = new Set();
 
+                // 1. Récupération des données brutes
                 if (statState.mode === 'compare') {
-                    // One Exercise, Multiple Users
                     const exId = statState.selectedId;
-                    const exName = db.exercises.find(e => e.id === exId)?.name;
                     
                     db.users.forEach((user, idx) => {
-                        const logs = db.logs.filter(l => l.userId === user.id && l.exId === exId && l.rm1 > 0).sort((a,b) => new Date(a.date) - new Date(b.date));
+                        const logs = db.logs
+                            .filter(l => l.userId === user.id && l.exId === exId && l.rm1 > 0)
+                            .sort((a,b) => new Date(a.date) - new Date(b.date));
+                        
                         if(logs.length > 0) {
                             logs.forEach(l => allLabels.add(l.date));
                             datasets.push({
                                 label: user.name,
-                                data: logs.map(l => ({x: l.date, y: l.rm1})),
+                                // FIX: On formate la date ici pour correspondre aux labels de l'axe X
+                                data: logs.map(l => ({x: formatDate(l.date), y: l.rm1})),
                                 borderColor: getColor(idx),
                                 backgroundColor: getColor(idx),
                                 tension: 0.3,
-                                pointRadius: 3
+                                pointRadius: 4,
+                                pointHoverRadius: 6
                             });
                         }
                     });
                 } else {
-                    // One User, Multiple Exercises
                     const userId = statState.selectedId;
                     
                     db.exercises.filter(e => e.type === 'strength').forEach((ex, idx) => {
-                        const logs = db.logs.filter(l => l.userId === userId && l.exId === ex.id && l.rm1 > 0).sort((a,b) => new Date(a.date) - new Date(b.date));
+                        const logs = db.logs
+                            .filter(l => l.userId === userId && l.exId === ex.id && l.rm1 > 0)
+                            .sort((a,b) => new Date(a.date) - new Date(b.date));
+                        
                         if(logs.length > 0) {
                             logs.forEach(l => allLabels.add(l.date));
                             datasets.push({
                                 label: ex.name,
-                                data: logs.map(l => ({x: l.date, y: l.rm1})),
+                                // FIX: On formate la date ici aussi
+                                data: logs.map(l => ({x: formatDate(l.date), y: l.rm1})),
                                 borderColor: getColor(idx),
                                 backgroundColor: getColor(idx),
                                 tension: 0.3,
-                                pointRadius: 3
+                                pointRadius: 4,
+                                pointHoverRadius: 6
                             });
                         }
                     });
                 }
 
-                const sortedLabels = Array.from(allLabels).sort((a,b) => new Date(a) - new Date(b));
+                // 2. Création des étiquettes (labels)
+                const sortedLabelsISO = Array.from(allLabels).sort((a,b) => new Date(a) - new Date(b));
+                const friendlyLabels = sortedLabelsISO.map(d => formatDate(d));
                 
                 if(currentChart) currentChart.destroy();
+                
                 currentChart = new Chart(ctx, {
                     type: 'line',
-                    data: { labels: sortedLabels.map(d => formatDate(d)), datasets },
+                    data: { 
+                        labels: friendlyLabels, 
+                        datasets: datasets 
+                    },
                     options: {
                         responsive: true,
                         maintainAspectRatio: false,
@@ -513,7 +532,10 @@
                             tooltip: { callbacks: { title: (c) => c[0].label } }
                         },
                         scales: {
-                            x: { grid: { display: false } },
+                            x: { 
+                                grid: { display: false },
+                                ticks: { maxRotation: 45, minRotation: 0 } // Meilleur affichage mobile
+                            },
                             y: { beginAtZero: statState.scaleZero }
                         }
                     }
@@ -589,7 +611,7 @@
                 </ul>`;
             container.appendChild(exBox);
             
-            container.innerHTML += `<div class="text-center text-[10px] text-slate-300 mt-4 font-mono">v5.0 • LocalStorage</div>`;
+            container.innerHTML += `<div class="text-center text-[10px] text-slate-300 mt-4 font-mono">v5.1 • Corrigée</div>`;
             app.appendChild(container);
 
             // Handlers
