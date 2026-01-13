@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Physical Log Odyssey</title>
+    <link rel="manifest" href="manifest.json">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { -webkit-tap-highlight-color: transparent; }
+        .hidden { display: none !important; }
+        /* Smooth transitions */
+        .fade-in { animation: fadeIn 0.3s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 h-screen flex flex-col font-sans">
+
+    <header class="bg-blue-600 text-white p-4 shadow-md z-10">
+        <h1 class="text-xl font-bold tracking-wide text-center">Physical Log Odyssey</h1>
+    </header>
+
+    <main id="app" class="flex-1 overflow-y-auto p-4 pb-24 relative">
+        </main>
+
+    <nav class="fixed bottom-0 w-full bg-white border-t border-slate-200 flex justify-around p-3 shadow-lg z-20 pb-safe">
+        <button onclick="router('log')" class="flex flex-col items-center text-slate-500 hover:text-blue-600 focus:text-blue-600 transition">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+            <span class="text-xs mt-1">Saisie</span>
+        </button>
+        <button onclick="router('history')" class="flex flex-col items-center text-slate-500 hover:text-blue-600 focus:text-blue-600 transition">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg>
+            <span class="text-xs mt-1">Historique</span>
+        </button>
+        <button onclick="router('stats')" class="flex flex-col items-center text-slate-500 hover:text-blue-600 focus:text-blue-600 transition">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"></path></svg>
+            <span class="text-xs mt-1">Graphiques</span>
+        </button>
+        <button onclick="router('settings')" class="flex flex-col items-center text-slate-500 hover:text-blue-600 focus:text-blue-600 transition">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+            <span class="text-xs mt-1">Gestion</span>
+        </button>
+    </nav>
+
+    <script>
+        // --- DATA STATE ---
+        const DB_KEY = 'physical_log_odyssey_v1';
+        let db = JSON.parse(localStorage.getItem(DB_KEY)) || {
+            users: [],
+            exercises: [],
+            logs: []
+        };
+
+        const saveDb = () => localStorage.setItem(DB_KEY, JSON.stringify(db));
+
+        // --- UTILS ---
+        const generateId = () => Date.now().toString(36) + Math.random().toString(36).substr(2);
+        
+        // Epley Formula: 1RM = Weight * (1 + Reps/30)
+        const calculate1RM = (weight, reps) => {
+            if(!weight || !reps) return 0;
+            if(reps === 1) return weight;
+            return Math.round((weight * (1 + reps / 30)) * 10) / 10;
+        };
+
+        const formatDate = (dateStr) => {
+            const d = new Date(dateStr);
+            return d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' });
+        };
+
+        // --- VIEWS ---
+        const app = document.getElementById('app');
+        let currentChart = null; // Store chart instance to destroy it later
+
+        function router(route) {
+            app.innerHTML = '';
+            app.className = "flex-1 overflow-y-auto p-4 pb-24 relative fade-in";
+            
+            if (route === 'log') renderLogView();
+            else if (route === 'history') renderHistoryView();
+            else if (route === 'stats') renderStatsView();
+            else if (route === 'settings') renderSettingsView();
+        }
+
+        // 1. LOG VIEW (Saisie)
+        function renderLogView(editLogId = null) {
+            if(db.users.length === 0 || db.exercises.length === 0) {
+                app.innerHTML = `<div class="text-center mt-10 p-4 bg-yellow-50 border border-yellow-200 rounded text-yellow-800">Commencez par ajouter un utilisateur et un exercice dans l'onglet <strong>Gestion</strong>.</div>`;
+                return;
+            }
+
+            let logToEdit = editLogId ? db.logs.find(l => l.id === editLogId) : null;
+            
+            const today = new Date().toISOString().split('T')[0];
+            
+            // HTML Form Construction
+            const form = document.createElement('div');
+            form.className = "space-y-4 max-w-lg mx-auto";
+            form.innerHTML = `
+                <h2 class="text-xl font-bold text-slate-700 mb-4">${logToEdit ? 'Modifier la performance' : 'Nouvelle Performance'}</h2>
+                
+                <div>
+                    <label class="block text-sm font-medium text-slate-600">Date</label>
+                    <input type="date" id="inputDate" value="${logToEdit ? logToEdit.date : today}" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-3 border bg-white focus:ring-blue-500 focus:border-blue-500">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-600">Athlète</label>
+                    <select id="inputUser" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-3 border bg-white">
+                        ${db.users.map(u => `<option value="${u.id}" ${logToEdit && logToEdit.userId === u.id ? 'selected' : ''}>${u.name}</option>`).join('')}
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-600">Exercice</label>
+                    <select id="inputEx" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-3 border bg-white" onchange="toggleInputs(this.value)">
+                         ${db.exercises.map(e => `<option value="${e.id}" data-type="${e.type}" ${logToEdit && logToEdit.exId === e.id ? 'selected' : ''}>${e.name} (${e.type === 'cardio' ? 'Cardio' : 'Muscu'})</option>`).join('')}
+                    </select>
+                </div>
+
+                <div id="strengthInputs" class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-600">Poids (kg)</label>
+                        <input type="number" step="0.5" id="inputWeight" value="${logToEdit ? logToEdit.weight || '' : ''}" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-3 border bg-white">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-600">Répétitions</label>
+                        <input type="number" id="inputReps" value="${logToEdit ? logToEdit.reps || '' : ''}" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-3 border bg-white">
+                    </div>
+                </div>
+
+                <div id="cardioInputs" class="hidden">
+                    <label class="block text-sm font-medium text-slate-600">Distance (km/m)</label>
+                    <input type="number" step="0.01" id="inputDist" value="${logToEdit ? logToEdit.distance || '' : ''}" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-3 border bg-white">
+                </div>
+
+                <div id="rmPreview" class="text-center text-sm font-bold text-blue-600 hidden">
+                    Max Estimé (Epley) : <span id="rmValue">--</span> kg
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-600">Commentaire</label>
+                    <textarea id="inputComment" rows="2" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-3 border bg-white">${logToEdit ? logToEdit.comment || '' : ''}</textarea>
+                </div>
+
+                <button id="saveBtn" class="w-full bg-blue-600 text-white font-bold py-3 px-4 rounded shadow hover:bg-blue-700 transition transform active:scale-95">
+                    ${logToEdit ? 'Mettre à jour' : 'Enregistrer'}
+                </button>
+                ${logToEdit ? `<button onclick="router('history')" class="w-full text-slate-500 mt-2 py-2">Annuler</button>` : ''}
+            `;
+
+            app.appendChild(form);
+
+            // Logic for dynamic inputs
+            const exSelect = document.getElementById('inputEx');
+            const wInput = document.getElementById('inputWeight');
+            const rInput = document.getElementById('inputReps');
+            
+            window.toggleInputs = (exId) => {
+                const ex = db.exercises.find(e => e.id === exId);
+                const sDiv = document.getElementById('strengthInputs');
+                const cDiv = document.getElementById('cardioInputs');
+                const rmPreview = document.getElementById('rmPreview');
+
+                if (ex.type === 'cardio') {
+                    sDiv.classList.add('hidden');
+                    rmPreview.classList.add('hidden');
+                    cDiv.classList.remove('hidden');
+                } else {
+                    sDiv.classList.remove('hidden');
+                    cDiv.classList.add('hidden');
+                    rmPreview.classList.remove('hidden');
+                }
+            };
+
+            const updateRM = () => {
+                const w = parseFloat(wInput.value);
+                const r = parseFloat(rInput.value);
+                if(w && r) {
+                    const rm = calculate1RM(w, r);
+                    document.getElementById('rmValue').textContent = rm;
+                    document.getElementById('rmPreview').classList.remove('hidden');
+                } else {
+                    document.getElementById('rmPreview').classList.add('hidden');
+                }
+            };
+
+            wInput.addEventListener('input', updateRM);
+            rInput.addEventListener('input', updateRM);
+            
+            // Init correct visibility
+            toggleInputs(exSelect.value); 
+            updateRM();
+
+            // Save Action
+            document.getElementById('saveBtn').onclick = () => {
+                const exId = exSelect.value;
+                const ex = db.exercises.find(e => e.id === exId);
+                
+                const newLog = {
+                    id: logToEdit ? logToEdit.id : generateId(),
+                    date: document.getElementById('inputDate').value,
+                    userId: document.getElementById('inputUser').value,
+                    exId: exId,
+                    comment: document.getElementById('inputComment').value,
+                    timestamp: Date.now()
+                };
+
+                if(ex.type === 'strength') {
+                    newLog.weight = parseFloat(wInput.value);
+                    newLog.reps = parseFloat(rInput.value);
+                    newLog.rm1 = calculate1RM(newLog.weight, newLog.reps);
+                } else {
+                    newLog.distance = parseFloat(document.getElementById('inputDist').value);
+                }
+
+                if(logToEdit) {
+                    const idx = db.logs.findIndex(l => l.id === logToEdit.id);
+                    db.logs[idx] = newLog;
+                } else {
+                    db.logs.push(newLog);
+                }
+                
+                saveDb();
+                router('history'); // Redirect to history after save
+            };
+        }
+
+        // 2. HISTORY VIEW
+        function renderHistoryView() {
+            const container = document.createElement('div');
+            container.className = "max-w-lg mx-auto";
+            container.innerHTML = `<h2 class="text-xl font-bold text-slate-700 mb-4">Historique des séances</h2>`;
+
+            // Sort by date desc
+            const sortedLogs = [...db.logs].sort((a,b) => new Date(b.date) - new Date(a.date));
+
+            if(sortedLogs.length === 0) {
+                container.innerHTML += `<p class="text-slate-400 text-center">Aucune donnée enregistrée.</p>`;
+            } else {
+                sortedLogs.forEach(log => {
+                    const user = db.users.find(u => u.id === log.userId)?.name || 'Inconnu';
+                    const ex = db.exercises.find(e => e.id === log.exId);
+                    const exName = ex?.name || 'Inconnu';
+                    
+                    let details = '';
+                    if(ex && ex.type === 'strength') {
+                        details = `<span class="font-mono text-blue-700 font-bold">${log.weight}kg x ${log.reps}</span>`;
+                        if(log.rm1) details += ` <span class="text-xs text-slate-400"> (RM: ${log.rm1})</span>`;
+                    } else {
+                        details = `<span class="font-mono text-green-600 font-bold">${log.distance} km</span>`;
+                    }
+
+                    const card = document.createElement('div');
+                    card.className = "bg-white p-4 rounded-lg shadow-sm border border-slate-100 mb-3 flex justify-between items-start";
+                    card.innerHTML = `
+                        <div>
+                            <div class="text-xs text-slate-400 font-semibold uppercase tracking-wider">${formatDate(log.date)} • ${user}</div>
+                            <div class="font-bold text-slate-800 text-lg">${exName}</div>
+                            <div class="mt-1">${details}</div>
+                            ${log.comment ? `<div class="mt-2 text-sm text-slate-500 italic border-l-2 border-slate-200 pl-2">"${log.comment}"</div>` : ''}
+                        </div>
+                        <button onclick="editLog('${log.id}')" class="text-blue-400 hover:text-blue-600 p-2">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
+                        </button>
+                    `;
+                    container.appendChild(card);
+                });
+            }
+            app.appendChild(container);
+        }
+
+        window.editLog = (id) => {
+            renderLogView(id);
+        };
+
+        // 3. STATS VIEW (Chart.js)
+        function renderStatsView() {
+            const container = document.createElement('div');
+            container.className = "max-w-lg mx-auto h-full flex flex-col";
+            
+            // Filters
+            const filterDiv = document.createElement('div');
+            filterDiv.className = "grid grid-cols-2 gap-2 mb-4";
+            filterDiv.innerHTML = `
+                 <select id="statUser" class="rounded border-gray-300 bg-white p-2 text-sm shadow-sm">
+                    ${db.users.map(u => `<option value="${u.id}">${u.name}</option>`).join('')}
+                 </select>
+                 <select id="statEx" class="rounded border-gray-300 bg-white p-2 text-sm shadow-sm">
+                    ${db.exercises.filter(e => e.type === 'strength').map(e => `<option value="${e.id}">${e.name}</option>`).join('')}
+                 </select>
+            `;
+            container.appendChild(filterDiv);
+
+            // Chart Canvas
+            const chartContainer = document.createElement('div');
+            chartContainer.className = "bg-white p-2 rounded shadow flex-1 relative min-h-[300px]";
+            chartContainer.innerHTML = `<canvas id="perfChart"></canvas>`;
+            container.appendChild(chartContainer);
+
+            app.appendChild(container);
+
+            const ctx = document.getElementById('perfChart').getContext('2d');
+            
+            const updateChart = () => {
+                const uId = document.getElementById('statUser').value;
+                const exId = document.getElementById('statEx').value;
+                
+                // Get data
+                const logs = db.logs
+                    .filter(l => l.userId === uId && l.exId === exId && l.rm1 > 0)
+                    .sort((a,b) => new Date(a.date) - new Date(b.date));
+
+                if(currentChart) currentChart.destroy();
+
+                if(logs.length < 2) {
+                    // Show "Not enough data" message on canvas logic implies easier to just clear
+                     // For simplicity, we just render an empty chart with a title
+                }
+
+                currentChart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: logs.map(l => formatDate(l.date)),
+                        datasets: [{
+                            label: 'Max Estimé (kg)',
+                            data: logs.map(l => l.rm1),
+                            borderColor: 'rgb(37, 99, 235)',
+                            backgroundColor: 'rgba(37, 99, 235, 0.1)',
+                            fill: true,
+                            tension: 0.3
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: logs.length < 2 ? 'Il faut au moins 2 données pour le graphique' : 'Évolution du 1RM Théorique'
+                            }
+                        },
+                        scales: {
+                            y: { beginAtZero: false }
+                        }
+                    }
+                });
+            };
+
+            document.getElementById('statUser').addEventListener('change', updateChart);
+            document.getElementById('statEx').addEventListener('change', updateChart);
+            
+            // Initial load if data exists
+            if(db.users.length > 0 && db.exercises.length > 0) updateChart();
+        }
+
+        // 4. SETTINGS VIEW
+        function renderSettingsView() {
+            const container = document.createElement('div');
+            container.className = "max-w-lg mx-auto space-y-6";
+            
+            // Add User
+            container.innerHTML = `
+                <div class="bg-white p-4 rounded shadow border border-slate-200">
+                    <h3 class="font-bold text-slate-700 mb-2">Ajouter un Athlète</h3>
+                    <div class="flex gap-2">
+                        <input type="text" id="newUserName" placeholder="Nom" class="flex-1 rounded border-gray-300 border p-2">
+                        <button id="addUserBtn" class="bg-green-600 text-white px-4 rounded hover:bg-green-700">OK</button>
+                    </div>
+                    <div class="mt-2 text-sm text-slate-500">
+                        Inscrits : ${db.users.map(u => u.name).join(', ')}
+                    </div>
+                </div>
+
+                <div class="bg-white p-4 rounded shadow border border-slate-200">
+                    <h3 class="font-bold text-slate-700 mb-2">Ajouter un Exercice</h3>
+                    <div class="flex gap-2 mb-2">
+                        <input type="text" id="newExName" placeholder="Nom de l'exo" class="flex-1 rounded border-gray-300 border p-2">
+                        <select id="newExType" class="rounded border-gray-300 border p-2 bg-white">
+                            <option value="strength">Musculation</option>
+                            <option value="cardio">Cardio</option>
+                        </select>
+                    </div>
+                    <button id="addExBtn" class="w-full bg-blue-600 text-white p-2 rounded hover:bg-blue-700">Ajouter l'exercice</button>
+                     <div class="mt-2 text-sm text-slate-500">
+                        Liste : ${db.exercises.map(e => e.name).join(', ')}
+                    </div>
+                </div>
+                
+                 <div class="text-center text-xs text-slate-400 mt-8">
+                    Données stockées localement sur l'appareil.<br>
+                    Formule 1RM : Epley.
+                </div>
+            `;
+            
+            app.appendChild(container);
+
+            document.getElementById('addUserBtn').onclick = () => {
+                const name = document.getElementById('newUserName').value.trim();
+                if(name) {
+                    db.users.push({ id: generateId(), name });
+                    saveDb();
+                    renderSettingsView(); // Refresh
+                }
+            };
+
+            document.getElementById('addExBtn').onclick = () => {
+                const name = document.getElementById('newExName').value.trim();
+                const type = document.getElementById('newExType').value;
+                if(name) {
+                    db.exercises.push({ id: generateId(), name, type });
+                    saveDb();
+                    renderSettingsView(); // Refresh
+                }
+            };
+        }
+
+        // Init Service Worker
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('./sw.js');
+        }
+
+        // Start App
+        router('log');
+
+    </script>
+</body>
+</html>
