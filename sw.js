@@ -1,5 +1,5 @@
 // Changement de nom de cache pour forcer la mise à jour
-const CACHE_NAME = 'plo-cache-v3';
+const CACHE_NAME = 'plo-cache-v4';
 const ASSETS = [
     './',
     './index.html',
