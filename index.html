@@ -14,15 +14,15 @@
         .fade-in { animation: fadeIn 0.2s ease-in-out; }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         
-        /* Toggle Switch Style */
+        /* Toggle Switch */
         .toggle-checkbox:checked { right: 0; border-color: #2563eb; }
         .toggle-checkbox:checked + .toggle-label { background-color: #2563eb; }
         
-        /* Tab Active State */
+        /* Tabs */
         .tab-active { border-bottom: 2px solid #2563eb; color: #2563eb; font-weight: bold; }
         .tab-inactive { color: #64748b; }
 
-        /* Custom Scrollbar for lists */
+        /* Scrollbar */
         .custom-scrollbar::-webkit-scrollbar { width: 4px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
@@ -58,15 +58,12 @@
     </nav>
 
     <script>
-        // --- DATA LAYER ---
+        // --- DATA ---
         const DB_KEY = 'physical_log_odyssey_v1';
         let db = JSON.parse(localStorage.getItem(DB_KEY)) || { users: [], exercises: [], logs: [] };
-        
-        const saveDb = () => {
-            localStorage.setItem(DB_KEY, JSON.stringify(db));
-        };
+        const saveDb = () => localStorage.setItem(DB_KEY, JSON.stringify(db));
 
-        // --- MATH & UTILS ---
+        // --- UTILS ---
         const generateId = () => Date.now().toString(36) + Math.random().toString(36).substr(2);
         
         const calculate1RM = (weight, reps) => {
@@ -90,21 +87,40 @@
             return `${date.getFullYear()}-W${week.toString().padStart(2, '0')}`;
         };
 
-        // Color Generator for graphs
-        const getColor = (index) => {
-            const hue = (index * 137.508) % 360; 
-            return `hsl(${hue}, 70%, 50%)`;
+        // --- COLORS: High Contrast Palette ---
+        // Liste de couleurs distinctes pour éviter les confusions
+        const DISTINCT_COLORS = [
+            '#e6194b', '#3cb44b', '#ffe119', '#4363d8', '#f58231', 
+            '#911eb4', '#46f0f0', '#f032e6', '#bcf60c', '#fabebe', 
+            '#008080', '#e6beff', '#9a6324', '#fffac8', '#800000', 
+            '#aaffc3', '#808000', '#ffd8b1', '#000075', '#808080'
+        ];
+
+        const getStyle = (index) => {
+            const colorIdx = index % DISTINCT_COLORS.length;
+            const styleIdx = Math.floor(index / DISTINCT_COLORS.length);
+            
+            // Si on dépasse 20 athlètes, on change le style de ligne
+            let dash = [];
+            if(styleIdx === 1) dash = [5, 5]; // Pointillés
+            if(styleIdx === 2) dash = [10, 5]; // Tirets longs
+            if(styleIdx === 3) dash = [2, 2]; // Pointillés fins
+
+            return {
+                color: DISTINCT_COLORS[colorIdx],
+                dash: dash
+            };
         };
 
         // --- ROUTING ---
         const app = document.getElementById('app');
         let currentChart = null; 
         
-        // State for Stats View
         let statState = {
-            mode: 'compare', // 'compare' (Exo -> Tous les users) OR 'athlete' (User -> Tous les exos)
+            mode: 'compare', // 'compare' | 'athlete'
             scaleZero: false,
-            selectedId: null // Stores either exId or userId depending on mode
+            selectedId: null, 
+            athleteViewType: 'strength' // 'strength' | 'cardio'
         };
 
         function highlightNav(route) {
@@ -120,9 +136,7 @@
         }
 
         function router(route) {
-            // Cleanup charts
             if(currentChart) { currentChart.destroy(); currentChart = null; }
-            
             app.innerHTML = '';
             app.className = "flex-1 overflow-y-auto p-4 pb-24 relative fade-in";
             highlightNav(route);
@@ -130,6 +144,7 @@
             if (route === 'log') renderLogView();
             else if (route === 'history') renderHistoryView();
             else if (route === 'stats') renderStatsView();
+            else if (route === 'ranking') renderRankingView();
             else if (route === 'settings') renderSettingsView();
         }
 
@@ -142,8 +157,8 @@
                             <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
                         </div>
                         <h2 class="text-xl font-bold text-slate-700">Bienvenue</h2>
-                        <p class="text-slate-500">Pour commencer, créez au moins un athlète et un exercice.</p>
-                        <button onclick="router('settings')" class="bg-blue-600 text-white px-6 py-3 rounded-xl shadow-lg font-semibold hover:bg-blue-700 transition">Aller à la Gestion</button>
+                        <p class="text-slate-500">Commencez par créer des données dans Gestion.</p>
+                        <button onclick="router('settings')" class="bg-blue-600 text-white px-6 py-3 rounded-xl font-semibold shadow-lg">Gestion</button>
                     </div>`;
                 return;
             }
@@ -155,21 +170,20 @@
             form.className = "space-y-6 max-w-lg mx-auto";
             form.innerHTML = `
                 <h2 class="text-2xl font-bold text-slate-800">${logToEdit ? 'Modifier' : 'Nouvelle Performance'}</h2>
-                
                 <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 space-y-4">
                     <div>
                         <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Date</label>
-                        <input type="date" id="inputDate" value="${logToEdit ? logToEdit.date : today}" class="block w-full rounded-lg bg-slate-50 border-transparent focus:border-blue-500 focus:bg-white focus:ring-0 text-slate-700 font-medium">
+                        <input type="date" id="inputDate" value="${logToEdit ? logToEdit.date : today}" class="block w-full rounded-lg bg-slate-50 border-transparent focus:ring-blue-500">
                     </div>
                     <div>
                         <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Athlète</label>
-                        <select id="inputUser" class="block w-full rounded-lg bg-slate-50 border-transparent focus:border-blue-500 focus:bg-white focus:ring-0 text-slate-700 font-medium h-11">
+                        <select id="inputUser" class="block w-full rounded-lg bg-slate-50 border-transparent focus:ring-blue-500 h-11">
                             ${db.users.map(u => `<option value="${u.id}" ${logToEdit && logToEdit.userId === u.id ? 'selected' : ''}>${u.name}</option>`).join('')}
                         </select>
                     </div>
                     <div>
                         <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Exercice</label>
-                        <select id="inputEx" class="block w-full rounded-lg bg-slate-50 border-transparent focus:border-blue-500 focus:bg-white focus:ring-0 text-slate-700 font-medium h-11" onchange="toggleInputs(this.value)">
+                        <select id="inputEx" class="block w-full rounded-lg bg-slate-50 border-transparent focus:ring-blue-500 h-11" onchange="toggleInputs(this.value)">
                              ${db.exercises.map(e => `<option value="${e.id}" data-type="${e.type}" ${logToEdit && logToEdit.exId === e.id ? 'selected' : ''}>${e.name}</option>`).join('')}
                         </select>
                     </div>
@@ -179,33 +193,32 @@
                     <div id="strengthInputs" class="grid grid-cols-2 gap-4">
                         <div>
                             <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Poids (kg)</label>
-                            <input type="number" step="0.5" id="inputWeight" value="${logToEdit ? logToEdit.weight || '' : ''}" class="block w-full text-center text-2xl font-bold rounded-lg bg-slate-50 border-transparent focus:border-blue-500 focus:bg-white focus:ring-0 text-blue-600" placeholder="0">
+                            <input type="number" step="0.5" id="inputWeight" value="${logToEdit ? logToEdit.weight || '' : ''}" class="block w-full text-center text-2xl font-bold rounded-lg bg-slate-50 border-transparent text-blue-600" placeholder="0">
                         </div>
                         <div>
                             <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Répétitions</label>
-                            <input type="number" id="inputReps" value="${logToEdit ? logToEdit.reps || '' : ''}" class="block w-full text-center text-2xl font-bold rounded-lg bg-slate-50 border-transparent focus:border-blue-500 focus:bg-white focus:ring-0 text-blue-600" placeholder="0">
+                            <input type="number" id="inputReps" value="${logToEdit ? logToEdit.reps || '' : ''}" class="block w-full text-center text-2xl font-bold rounded-lg bg-slate-50 border-transparent text-blue-600" placeholder="0">
                         </div>
                     </div>
                     <div id="cardioInputs" class="hidden">
                         <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Distance (km)</label>
-                        <input type="number" step="0.01" id="inputDist" value="${logToEdit ? logToEdit.distance || '' : ''}" class="block w-full text-center text-2xl font-bold rounded-lg bg-slate-50 border-transparent focus:border-blue-500 focus:bg-white focus:ring-0 text-green-600" placeholder="0.00">
+                        <input type="number" step="0.01" id="inputDist" value="${logToEdit ? logToEdit.distance || '' : ''}" class="block w-full text-center text-2xl font-bold rounded-lg bg-slate-50 border-transparent text-green-600" placeholder="0.00">
                     </div>
                     <div id="rmPreview" class="mt-4 pt-4 border-t border-slate-100 text-center hidden">
-                        <span class="text-xs uppercase font-bold text-slate-400">Max Théorique (Epley)</span>
+                        <span class="text-xs uppercase font-bold text-slate-400">Max Théorique</span>
                         <div class="text-3xl font-black text-slate-800 tracking-tighter"><span id="rmValue">--</span> <span class="text-lg font-medium text-slate-400">kg</span></div>
                     </div>
                 </div>
 
                 <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
                     <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Commentaire</label>
-                    <textarea id="inputComment" rows="2" class="block w-full rounded-lg bg-slate-50 border-transparent focus:border-blue-500 focus:bg-white focus:ring-0 text-slate-700">${logToEdit ? logToEdit.comment || '' : ''}</textarea>
+                    <textarea id="inputComment" rows="2" class="block w-full rounded-lg bg-slate-50 border-transparent focus:ring-blue-500">${logToEdit ? logToEdit.comment || '' : ''}</textarea>
                 </div>
 
                 <div class="pt-2 flex gap-3">
-                    ${logToEdit ? `<button onclick="router('history')" class="flex-1 bg-slate-100 text-slate-500 font-bold py-4 rounded-xl hover:bg-slate-200 transition">Annuler</button>` : ''}
-                    <button id="saveBtn" class="flex-[2] bg-blue-600 text-white font-bold py-4 rounded-xl shadow-lg shadow-blue-200 hover:bg-blue-700 transition transform active:scale-95 flex justify-center items-center gap-2">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                        <span>${logToEdit ? 'Mettre à jour' : 'Enregistrer'}</span>
+                    ${logToEdit ? `<button onclick="router('history')" class="flex-1 bg-slate-100 text-slate-500 font-bold py-4 rounded-xl">Annuler</button>` : ''}
+                    <button id="saveBtn" class="flex-[2] bg-blue-600 text-white font-bold py-4 rounded-xl shadow-lg hover:bg-blue-700 transition active:scale-95">
+                        ${logToEdit ? 'Mettre à jour' : 'Enregistrer'}
                     </button>
                 </div>
             `;
@@ -222,13 +235,9 @@
                 const cDiv = document.getElementById('cardioInputs');
                 const rmPreview = document.getElementById('rmPreview');
                 if (ex.type === 'cardio') {
-                    sDiv.classList.add('hidden');
-                    rmPreview.classList.add('hidden');
-                    cDiv.classList.remove('hidden');
+                    sDiv.classList.add('hidden'); rmPreview.classList.add('hidden'); cDiv.classList.remove('hidden');
                 } else {
-                    sDiv.classList.remove('hidden');
-                    cDiv.classList.add('hidden');
-                    rmPreview.classList.remove('hidden');
+                    sDiv.classList.remove('hidden'); cDiv.classList.add('hidden'); rmPreview.classList.remove('hidden');
                 }
             };
 
@@ -236,8 +245,7 @@
                 const w = parseFloat(wInput.value);
                 const r = parseFloat(rInput.value);
                 if(w && r) {
-                    const rm = calculate1RM(w, r);
-                    document.getElementById('rmValue').textContent = rm;
+                    document.getElementById('rmValue').textContent = calculate1RM(w, r);
                     document.getElementById('rmPreview').classList.remove('hidden');
                 } else document.getElementById('rmPreview').classList.add('hidden');
             };
@@ -263,10 +271,10 @@
                     newLog.weight = parseFloat(wInput.value);
                     newLog.reps = parseFloat(rInput.value);
                     newLog.rm1 = calculate1RM(newLog.weight, newLog.reps);
-                    if(!newLog.weight || !newLog.reps) { alert("Poids et Répétitions requis"); return; }
+                    if(!newLog.weight || !newLog.reps) return alert("Poids/Reps requis");
                 } else {
                     newLog.distance = parseFloat(document.getElementById('inputDist').value);
-                    if(!newLog.distance) { alert("Distance requise"); return; }
+                    if(!newLog.distance) return alert("Distance requise");
                 }
 
                 if(logToEdit) {
@@ -286,15 +294,9 @@
             container.innerHTML = `
                 <h2 class="text-2xl font-bold text-slate-800 mb-4 sticky top-0 bg-slate-50 z-10 py-2">Historique</h2>
                 <div class="bg-white p-3 rounded-xl shadow-sm border border-slate-100 mb-4 grid grid-cols-2 gap-2">
-                    <div>
-                        <label class="text-[10px] uppercase font-bold text-slate-400">Mois</label>
-                        <input type="month" id="filterMonth" class="w-full text-sm p-1.5 bg-slate-50 border-none rounded focus:ring-2 focus:ring-blue-100">
-                    </div>
-                    <div>
-                        <label class="text-[10px] uppercase font-bold text-slate-400">Semaine</label>
-                        <input type="week" id="filterWeek" class="w-full text-sm p-1.5 bg-slate-50 border-none rounded focus:ring-2 focus:ring-blue-100">
-                    </div>
-                    <button id="clearFilters" class="col-span-2 text-xs text-blue-600 font-semibold py-2 border border-blue-100 bg-blue-50 rounded mt-1 hidden">Réinitialiser les filtres</button>
+                    <input type="month" id="filterMonth" class="w-full text-sm p-1.5 bg-slate-50 border-none rounded">
+                    <input type="week" id="filterWeek" class="w-full text-sm p-1.5 bg-slate-50 border-none rounded">
+                    <button id="clearFilters" class="col-span-2 text-xs text-blue-600 font-bold py-2 hidden">Afficher tout</button>
                 </div>
                 <div id="logsList" class="space-y-3"></div>
             `;
@@ -308,7 +310,7 @@
             const renderLogs = (logs) => {
                 logsListEl.innerHTML = '';
                 if(logs.length === 0) {
-                    logsListEl.innerHTML = `<div class="text-center text-slate-400 py-10 italic">Aucune donnée trouvée.</div>`;
+                    logsListEl.innerHTML = `<div class="text-center text-slate-400 py-10 italic">Aucune donnée.</div>`;
                     return;
                 }
                 logs.forEach(log => {
@@ -317,29 +319,29 @@
                     
                     let content, badge;
                     if(ex && ex.type === 'strength') {
-                        content = `<div class="flex items-baseline gap-1"><span class="text-lg font-bold text-slate-800">${log.weight}kg</span> <span class="text-sm text-slate-500">x ${log.reps}</span></div>`;
-                        if(log.rm1) content += `<div class="text-xs text-blue-600 font-bold mt-0.5">RM: ${log.rm1}</div>`;
+                        content = `<span class="font-bold text-slate-800">${log.weight}kg</span> <span class="text-slate-500 text-sm">x${log.reps}</span>`;
+                        if(log.rm1) content += ` <span class="text-xs text-blue-600 font-bold">(RM:${log.rm1})</span>`;
                         badge = 'bg-blue-100 text-blue-700';
                     } else {
-                        content = `<div class="text-lg font-bold text-slate-800">${log.distance ? log.distance.toFixed(2) : '--'} km</div>`;
+                        content = `<span class="font-bold text-slate-800">${log.distance ? log.distance.toFixed(2) : '--'} km</span>`;
                         badge = 'bg-green-100 text-green-700';
                     }
 
                     const card = document.createElement('div');
-                    card.className = "bg-white p-4 rounded-xl shadow-[0_2px_8px_-2px_rgba(0,0,0,0.05)] border border-slate-100 flex justify-between items-center group";
+                    card.className = "bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex justify-between items-center";
                     card.innerHTML = `
                         <div class="flex-1">
                             <div class="flex items-center gap-2 mb-1">
-                                <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">${formatDate(log.date)}</span>
+                                <span class="text-[10px] font-bold uppercase text-slate-400">${formatDate(log.date)}</span>
                                 <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase ${badge}">${user}</span>
                             </div>
-                            <div class="font-bold text-slate-700 leading-tight">${ex ? ex.name : 'Exercice supprimé'}</div>
+                            <div class="font-bold text-slate-700">${ex ? ex.name : 'Exercice supprimé'}</div>
                             <div class="mt-1">${content}</div>
-                            ${log.comment ? `<div class="mt-2 text-xs text-slate-500 italic border-l-2 border-slate-200 pl-2">"${log.comment}"</div>` : ''}
+                            ${log.comment ? `<div class="mt-1 text-xs text-slate-500 italic">"${log.comment}"</div>` : ''}
                         </div>
-                        <div class="flex flex-col gap-2 pl-4 border-l border-slate-50">
-                            <button onclick="editLog('${log.id}')" class="p-1.5 text-blue-400 hover:text-blue-600 bg-blue-50 rounded-lg"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg></button>
-                            <button onclick="deleteLog('${log.id}')" class="p-1.5 text-red-300 hover:text-red-500 bg-red-50 rounded-lg"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></button>
+                        <div class="flex flex-col gap-2 pl-3 border-l border-slate-50">
+                            <button onclick="editLog('${log.id}')" class="text-blue-400 hover:text-blue-600">✎</button>
+                            <button onclick="deleteLog('${log.id}')" class="text-red-300 hover:text-red-500">✕</button>
                         </div>
                     `;
                     logsListEl.appendChild(card);
@@ -350,12 +352,10 @@
                 let filtered = [...db.logs].sort((a,b) => new Date(b.date) - new Date(a.date));
                 if (filterMonthEl.value) {
                     filtered = filtered.filter(l => l.date.startsWith(filterMonthEl.value));
-                    filterWeekEl.value = '';
-                    clearBtn.classList.remove('hidden');
+                    filterWeekEl.value = ''; clearBtn.classList.remove('hidden');
                 } else if (filterWeekEl.value) {
                     filtered = filtered.filter(l => getIsoWeek(l.date) === filterWeekEl.value);
-                    filterMonthEl.value = '';
-                    clearBtn.classList.remove('hidden');
+                    filterMonthEl.value = ''; clearBtn.classList.remove('hidden');
                 } else clearBtn.classList.add('hidden');
                 renderLogs(filtered);
             };
@@ -369,28 +369,23 @@
         window.editLog = (id) => renderLogView(id);
         window.deleteLog = (id) => { if(confirm("Supprimer ?")) { db.logs = db.logs.filter(l => l.id !== id); saveDb(); router('history'); }};
 
-        // --- 3. STATS VIEW (Advanced) ---
+        // --- 3. STATS VIEW ---
         function renderStatsView() {
             const container = document.createElement('div');
             container.className = "max-w-lg mx-auto flex flex-col h-full";
             
-            // Header with Tabs
             container.innerHTML = `
                 <h2 class="text-2xl font-bold text-slate-800 mb-4">Analyse</h2>
                 
                 <div class="flex border-b border-slate-200 mb-4">
-                    <button id="tabCompare" class="flex-1 pb-2 text-sm font-medium transition ${statState.mode === 'compare' ? 'tab-active' : 'tab-inactive'}">
-                        Comparatif
-                    </button>
-                    <button id="tabAthlete" class="flex-1 pb-2 text-sm font-medium transition ${statState.mode === 'athlete' ? 'tab-active' : 'tab-inactive'}">
-                        Par Athlète
-                    </button>
+                    <button id="tabCompare" class="flex-1 pb-2 text-sm font-medium transition ${statState.mode === 'compare' ? 'tab-active' : 'tab-inactive'}">Comparatif</button>
+                    <button id="tabAthlete" class="flex-1 pb-2 text-sm font-medium transition ${statState.mode === 'athlete' ? 'tab-active' : 'tab-inactive'}">Par Athlète</button>
                 </div>
 
-                <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100 mb-4">
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100 mb-4 flex flex-col gap-3">
                     <div id="selectionArea"></div>
                     
-                    <div class="flex items-center justify-between border-t border-slate-100 pt-3 mt-3">
+                    <div class="flex items-center justify-between border-t border-slate-100 pt-3">
                         <span class="text-xs font-semibold text-slate-400 uppercase">Échelle Y</span>
                         <div class="flex items-center cursor-pointer" onclick="document.getElementById('scaleToggle').click()">
                             <span class="mr-2 text-xs font-bold text-slate-600" id="scaleLabel">${statState.scaleZero ? '0' : 'Zoom'}</span>
@@ -402,58 +397,69 @@
                     </div>
                 </div>
 
-                <div class="bg-white p-2 rounded-xl shadow-lg border border-slate-100 flex-1 relative min-h-[300px]">
+                <div class="bg-white p-2 rounded-xl shadow-lg border border-slate-100 flex-1 relative min-h-[300px] mb-4 overflow-hidden">
                     <canvas id="perfChart"></canvas>
                 </div>
             `;
             app.appendChild(container);
 
-            // Tab Logic
             document.getElementById('tabCompare').onclick = () => { statState.mode = 'compare'; statState.selectedId = null; renderStatsView(); };
             document.getElementById('tabAthlete').onclick = () => { statState.mode = 'athlete'; statState.selectedId = null; renderStatsView(); };
             
-            // Selection Logic based on Mode
             const selectionArea = document.getElementById('selectionArea');
-            const searchInputId = 'statSearch';
             const selectId = 'statSelect';
 
-            // Filter Helper
             window.filterOptions = (input) => {
                 const term = input.value.toLowerCase();
                 const select = document.getElementById(selectId);
                 Array.from(select.options).forEach(opt => {
-                    const txt = opt.text.toLowerCase();
-                    opt.hidden = !txt.includes(term);
+                    opt.hidden = !opt.text.toLowerCase().includes(term);
                 });
             };
 
+            // Dynamic Controls Generation
             if (statState.mode === 'compare') {
-                // Mode: Choose Exercise -> Show All Users
                 const defaultEx = db.exercises.length > 0 ? db.exercises[0].id : '';
                 if (!statState.selectedId && defaultEx) statState.selectedId = defaultEx;
 
                 selectionArea.innerHTML = `
-                    <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Choisir l'exercice</label>
-                    <input type="text" id="${searchInputId}" placeholder="Rechercher..." class="block w-full text-sm mb-2 p-2 rounded bg-slate-50 border-none" oninput="filterOptions(this)">
-                    <select id="${selectId}" class="block w-full rounded-lg border-slate-200 bg-white p-2 text-sm font-semibold">
-                        ${db.exercises.filter(e => e.type === 'strength').map(e => `<option value="${e.id}" ${statState.selectedId === e.id ? 'selected' : ''}>${e.name}</option>`).join('')}
-                    </select>
+                    <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Exercice</label>
+                    <div class="flex gap-2">
+                        <div class="flex-1">
+                            <input type="text" placeholder="Rechercher..." class="block w-full text-sm mb-1 p-1 rounded bg-slate-50 border-none" oninput="filterOptions(this)">
+                            <select id="${selectId}" class="block w-full rounded-lg border-slate-200 bg-white p-2 text-sm font-semibold">
+                                ${db.exercises.map(e => `<option value="${e.id}" ${statState.selectedId === e.id ? 'selected' : ''}>${e.name}</option>`).join('')}
+                            </select>
+                        </div>
+                        <button onclick="router('ranking')" class="bg-yellow-100 text-yellow-700 p-2 rounded-lg h-full flex items-center justify-center shadow-sm" title="Voir le classement">
+                            <span class="text-xl">🏆</span>
+                        </button>
+                    </div>
                 `;
             } else {
-                // Mode: Choose User -> Show All Exercises
+                // Athlete Mode: Needs Type Toggle (Cardio/Strength)
                 const defaultUser = db.users.length > 0 ? db.users[0].id : '';
                 if (!statState.selectedId && defaultUser) statState.selectedId = defaultUser;
 
                 selectionArea.innerHTML = `
-                    <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Choisir l'athlète</label>
-                    <input type="text" id="${searchInputId}" placeholder="Rechercher..." class="block w-full text-sm mb-2 p-2 rounded bg-slate-50 border-none" oninput="filterOptions(this)">
-                    <select id="${selectId}" class="block w-full rounded-lg border-slate-200 bg-white p-2 text-sm font-semibold">
+                    <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Athlète</label>
+                    <input type="text" placeholder="Rechercher..." class="block w-full text-sm mb-1 p-1 rounded bg-slate-50 border-none" oninput="filterOptions(this)">
+                    <select id="${selectId}" class="block w-full rounded-lg border-slate-200 bg-white p-2 text-sm font-semibold mb-3">
                          ${db.users.map(u => `<option value="${u.id}" ${statState.selectedId === u.id ? 'selected' : ''}>${u.name}</option>`).join('')}
                     </select>
+                    
+                    <div class="flex bg-slate-100 p-1 rounded-lg">
+                        <button id="typeStrength" class="flex-1 py-1 text-xs font-bold rounded ${statState.athleteViewType === 'strength' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400'}" onclick="setAthleteType('strength')">FORCE</button>
+                        <button id="typeCardio" class="flex-1 py-1 text-xs font-bold rounded ${statState.athleteViewType === 'cardio' ? 'bg-white text-green-600 shadow-sm' : 'text-slate-400'}" onclick="setAthleteType('cardio')">CARDIO</button>
+                    </div>
                 `;
+                
+                window.setAthleteType = (t) => {
+                    statState.athleteViewType = t;
+                    renderStatsView(); // Re-render to update chart and button styles
+                };
             }
 
-            // Chart Render Logic
             const ctx = document.getElementById('perfChart').getContext('2d');
             
             const updateChart = () => {
@@ -463,55 +469,66 @@
                 statState.selectedId = select.value;
                 const datasets = [];
                 let allLabels = new Set();
+                let yAxisLabel = "Kg";
 
-                // 1. Récupération des données brutes
                 if (statState.mode === 'compare') {
                     const exId = statState.selectedId;
+                    const ex = db.exercises.find(e => e.id === exId);
+                    yAxisLabel = ex.type === 'strength' ? 'Max Estimé (kg)' : 'Distance (km)';
                     
                     db.users.forEach((user, idx) => {
                         const logs = db.logs
-                            .filter(l => l.userId === user.id && l.exId === exId && l.rm1 > 0)
+                            .filter(l => l.userId === user.id && l.exId === exId)
                             .sort((a,b) => new Date(a.date) - new Date(b.date));
                         
-                        if(logs.length > 0) {
-                            logs.forEach(l => allLabels.add(l.date));
+                        // Check if valid data exists
+                        const validLogs = logs.filter(l => (ex.type === 'strength' ? l.rm1 > 0 : l.distance > 0));
+
+                        if(validLogs.length > 0) {
+                            validLogs.forEach(l => allLabels.add(l.date));
+                            const style = getStyle(idx);
                             datasets.push({
                                 label: user.name,
-                                // FIX: On formate la date ici pour correspondre aux labels de l'axe X
-                                data: logs.map(l => ({x: formatDate(l.date), y: l.rm1})),
-                                borderColor: getColor(idx),
-                                backgroundColor: getColor(idx),
+                                data: validLogs.map(l => ({x: formatDate(l.date), y: ex.type === 'strength' ? l.rm1 : l.distance})),
+                                borderColor: style.color,
+                                backgroundColor: style.color,
+                                borderDash: style.dash,
                                 tension: 0.3,
                                 pointRadius: 4,
-                                pointHoverRadius: 6
+                                pointHoverRadius: 7
                             });
                         }
                     });
                 } else {
+                    // Athlete Mode
                     const userId = statState.selectedId;
-                    
-                    db.exercises.filter(e => e.type === 'strength').forEach((ex, idx) => {
+                    const targetType = statState.athleteViewType; // 'strength' or 'cardio'
+                    yAxisLabel = targetType === 'strength' ? 'Max Estimé (kg)' : 'Distance (km)';
+
+                    db.exercises.filter(e => e.type === targetType).forEach((ex, idx) => {
                         const logs = db.logs
-                            .filter(l => l.userId === userId && l.exId === ex.id && l.rm1 > 0)
+                            .filter(l => l.userId === userId && l.exId === ex.id)
                             .sort((a,b) => new Date(a.date) - new Date(b.date));
                         
-                        if(logs.length > 0) {
-                            logs.forEach(l => allLabels.add(l.date));
+                        const validLogs = logs.filter(l => (targetType === 'strength' ? l.rm1 > 0 : l.distance > 0));
+
+                        if(validLogs.length > 0) {
+                            validLogs.forEach(l => allLabels.add(l.date));
+                            const style = getStyle(idx);
                             datasets.push({
                                 label: ex.name,
-                                // FIX: On formate la date ici aussi
-                                data: logs.map(l => ({x: formatDate(l.date), y: l.rm1})),
-                                borderColor: getColor(idx),
-                                backgroundColor: getColor(idx),
+                                data: validLogs.map(l => ({x: formatDate(l.date), y: targetType === 'strength' ? l.rm1 : l.distance})),
+                                borderColor: style.color,
+                                backgroundColor: style.color,
+                                borderDash: style.dash,
                                 tension: 0.3,
                                 pointRadius: 4,
-                                pointHoverRadius: 6
+                                pointHoverRadius: 7
                             });
                         }
                     });
                 }
 
-                // 2. Création des étiquettes (labels)
                 const sortedLabelsISO = Array.from(allLabels).sort((a,b) => new Date(a) - new Date(b));
                 const friendlyLabels = sortedLabelsISO.map(d => formatDate(d));
                 
@@ -519,30 +536,29 @@
                 
                 currentChart = new Chart(ctx, {
                     type: 'line',
-                    data: { 
-                        labels: friendlyLabels, 
-                        datasets: datasets 
-                    },
+                    data: { labels: friendlyLabels, datasets },
                     options: {
                         responsive: true,
                         maintainAspectRatio: false,
                         interaction: { mode: 'nearest', intersect: false },
                         plugins: {
-                            legend: { display: true, position: 'bottom', labels: { boxWidth: 10, padding: 10, font: { size: 10 } } },
+                            legend: { display: true, position: 'bottom', labels: { boxWidth: 12, padding: 15, usePointStyle: true } },
                             tooltip: { callbacks: { title: (c) => c[0].label } }
                         },
                         scales: {
-                            x: { 
-                                grid: { display: false },
-                                ticks: { maxRotation: 45, minRotation: 0 } // Meilleur affichage mobile
-                            },
-                            y: { beginAtZero: statState.scaleZero }
+                            x: { grid: { display: false }, ticks: { maxRotation: 45, minRotation: 0 } },
+                            y: { 
+                                beginAtZero: statState.scaleZero,
+                                title: { display: true, text: yAxisLabel }
+                            }
                         }
                     }
                 });
             };
 
-            document.getElementById(selectId).addEventListener('change', updateChart);
+            const selEl = document.getElementById(selectId);
+            if(selEl) selEl.addEventListener('change', updateChart);
+            
             document.getElementById('scaleToggle').addEventListener('change', (e) => {
                 statState.scaleZero = e.target.checked;
                 document.getElementById('scaleLabel').innerText = statState.scaleZero ? '0' : 'Zoom';
@@ -552,13 +568,90 @@
             updateChart();
         }
 
-        // --- 4. SETTINGS VIEW (Realtime & Retroactive) ---
+        // --- 4. RANKING VIEW ---
+        function renderRankingView() {
+            // Need selected Exercise ID from state or default
+            let exId = statState.selectedId;
+            // Fallback if we came here directly without selection (unlikely but safe)
+            if(!exId || !db.exercises.find(e => e.id === exId)) {
+                if(db.exercises.length > 0) exId = db.exercises[0].id;
+                else return; 
+            }
+            
+            const ex = db.exercises.find(e => e.id === exId);
+            const isStrength = ex.type === 'strength';
+            const unit = isStrength ? 'kg' : 'km';
+            
+            // Logic: For this exercise, find the BEST perf for each user
+            let rankings = [];
+            db.users.forEach(user => {
+                const userLogs = db.logs.filter(l => l.userId === user.id && l.exId === exId);
+                if(userLogs.length === 0) return;
+                
+                let bestVal = 0;
+                let bestDate = '';
+                
+                userLogs.forEach(l => {
+                    const val = isStrength ? (l.rm1 || 0) : (l.distance || 0);
+                    if(val > bestVal) { bestVal = val; bestDate = l.date; }
+                });
+
+                if(bestVal > 0) {
+                    rankings.push({ name: user.name, val: bestVal, date: bestDate });
+                }
+            });
+
+            // Sort Descending
+            rankings.sort((a,b) => b.val - a.val);
+
+            const container = document.createElement('div');
+            container.className = "max-w-lg mx-auto pb-6 fade-in";
+            container.innerHTML = `
+                <div class="flex items-center gap-2 mb-6">
+                    <button onclick="router('stats')" class="bg-slate-100 p-2 rounded-full hover:bg-slate-200">
+                        <svg class="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+                    </button>
+                    <h2 class="text-xl font-bold text-slate-800">Classement</h2>
+                </div>
+                
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 text-center mb-6">
+                    <div class="text-xs uppercase font-bold text-slate-400 mb-1">Exercice</div>
+                    <div class="text-xl font-bold text-blue-600">${ex.name}</div>
+                    <div class="text-[10px] text-slate-400 mt-1">Meilleure perf enregistrée (PR)</div>
+                </div>
+
+                <div class="space-y-3">
+                    ${rankings.map((r, i) => {
+                        let medal = '';
+                        if(i === 0) medal = '🥇';
+                        else if(i === 1) medal = '🥈';
+                        else if(i === 2) medal = '🥉';
+                        else medal = `<span class="font-bold text-slate-400 w-6 text-center inline-block">${i+1}.</span>`;
+
+                        return `
+                        <div class="flex items-center justify-between bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
+                            <div class="flex items-center gap-3">
+                                <div class="text-xl">${medal}</div>
+                                <div class="font-bold text-slate-700">${r.name}</div>
+                            </div>
+                            <div class="text-right">
+                                <div class="font-bold text-lg text-slate-800">${r.val} <span class="text-xs font-normal text-slate-500">${unit}</span></div>
+                                <div class="text-[10px] text-slate-400">${formatDate(r.date)}</div>
+                            </div>
+                        </div>`;
+                    }).join('')}
+                    ${rankings.length === 0 ? '<div class="text-center text-slate-400 italic">Aucune donnée pour classer.</div>' : ''}
+                </div>
+            `;
+            app.appendChild(container);
+        }
+
+        // --- 5. SETTINGS VIEW ---
         function renderSettingsView() {
             const container = document.createElement('div');
             container.className = "max-w-lg mx-auto space-y-6 pb-8";
-            container.innerHTML = `<h2 class="text-2xl font-bold text-slate-800 mb-2">Gestion Données</h2>`;
+            container.innerHTML = `<h2 class="text-2xl font-bold text-slate-800 mb-2">Gestion</h2>`;
 
-            // Users
             const userBox = document.createElement('div');
             userBox.className = "bg-white p-5 rounded-xl shadow-sm border border-slate-100";
             userBox.innerHTML = `
@@ -572,16 +665,14 @@
                         <li class="flex justify-between items-center bg-slate-50 p-3 rounded-lg border border-slate-100 group">
                             <span class="font-medium text-slate-700">${u.name}</span>
                             <div class="flex gap-2 opacity-100">
-                                <button onclick="renameUser('${u.id}')" class="text-slate-400 hover:text-blue-500"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg></button>
-                                <button onclick="deleteUser('${u.id}')" class="text-slate-400 hover:text-red-500"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></button>
+                                <button onclick="renameUser('${u.id}')" class="text-slate-400 hover:text-blue-500">✎</button>
+                                <button onclick="deleteUser('${u.id}')" class="text-slate-400 hover:text-red-500">✕</button>
                             </div>
                         </li>
                     `).join('')}
-                    ${db.users.length === 0 ? '<li class="text-center text-xs text-slate-400 italic">Aucun athlète</li>' : ''}
                 </ul>`;
             container.appendChild(userBox);
 
-            // Exercises
             const exBox = document.createElement('div');
             exBox.className = "bg-white p-5 rounded-xl shadow-sm border border-slate-100";
             exBox.innerHTML = `
@@ -593,7 +684,7 @@
                         <option value="cardio">Cardio</option>
                     </select>
                 </div>
-                <button id="addExBtn" class="w-full bg-blue-600 text-white rounded-lg p-2 text-sm font-bold mb-4 shadow hover:bg-blue-700 transition">Ajouter</button>
+                <button id="addExBtn" class="w-full bg-blue-600 text-white rounded-lg p-2 text-sm font-bold mb-4 shadow hover:bg-blue-700">Ajouter</button>
                 <ul class="space-y-2 max-h-60 overflow-y-auto custom-scrollbar">
                     ${db.exercises.map(e => `
                         <li class="flex justify-between items-center bg-slate-50 p-3 rounded-lg border border-slate-100">
@@ -602,19 +693,15 @@
                                 <div class="text-[10px] uppercase font-bold text-slate-400">${e.type === 'cardio' ? 'Cardio' : 'Muscu'}</div>
                             </div>
                             <div class="flex gap-2">
-                                <button onclick="renameExercise('${e.id}')" class="text-slate-400 hover:text-blue-500"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg></button>
-                                <button onclick="deleteExercise('${e.id}')" class="text-slate-400 hover:text-red-500"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></button>
+                                <button onclick="renameExercise('${e.id}')" class="text-slate-400 hover:text-blue-500">✎</button>
+                                <button onclick="deleteExercise('${e.id}')" class="text-slate-400 hover:text-red-500">✕</button>
                             </div>
                         </li>
                     `).join('')}
-                    ${db.exercises.length === 0 ? '<li class="text-center text-xs text-slate-400 italic">Aucun exercice</li>' : ''}
                 </ul>`;
             container.appendChild(exBox);
-            
-            container.innerHTML += `<div class="text-center text-[10px] text-slate-300 mt-4 font-mono">v5.1 • Corrigée</div>`;
             app.appendChild(container);
 
-            // Handlers
             document.getElementById('addUserBtn').onclick = () => {
                 const name = document.getElementById('newUserName').value.trim();
                 if(name) { db.users.push({ id: generateId(), name }); saveDb(); renderSettingsView(); }
@@ -625,7 +712,6 @@
                 if(name) { db.exercises.push({ id: generateId(), name, type }); saveDb(); renderSettingsView(); }
             };
 
-            // GLOBAL ACTIONS (Available to onclick)
             window.deleteUser = (id) => {
                 if(confirm("Supprimer l'athlète et TOUT son historique ?")) {
                     db.users = db.users.filter(u => u.id !== id);
@@ -638,7 +724,6 @@
                 const newName = prompt("Nouveau nom :", u.name);
                 if(newName && newName !== u.name) { u.name = newName; saveDb(); renderSettingsView(); }
             };
-            
             window.deleteExercise = (id) => {
                 if(confirm("Supprimer l'exercice et TOUT son historique ?")) {
                     db.exercises = db.exercises.filter(e => e.id !== id);
