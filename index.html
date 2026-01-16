@@ -26,6 +26,9 @@
         .custom-scrollbar::-webkit-scrollbar { width: 4px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+
+        /* Modal Backdrop */
+        .modal-backdrop { background-color: rgba(0, 0, 0, 0.5); backdrop-filter: blur(2px); }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-800 h-screen flex flex-col font-sans">
@@ -37,6 +40,16 @@
 
     <main id="app" class="flex-1 overflow-y-auto p-4 pb-24 relative">
         </main>
+
+    <div id="modalContainer" class="fixed inset-0 z-50 hidden flex items-center justify-center modal-backdrop p-4">
+        <div class="bg-white w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            <div class="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                <h3 class="font-bold text-lg text-slate-800">Édition Rapide</h3>
+                <button onclick="closeModal()" class="text-slate-400 hover:text-slate-600 text-2xl leading-none">&times;</button>
+            </div>
+            <div id="modalContent" class="p-4 overflow-y-auto custom-scrollbar"></div>
+        </div>
+    </div>
 
     <nav class="fixed bottom-0 w-full bg-white border-t border-slate-200 flex justify-around p-3 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] z-20 pb-safe">
         <button onclick="router('log')" class="nav-btn flex flex-col items-center text-slate-400 hover:text-blue-600 transition" id="nav-log">
@@ -58,9 +71,22 @@
     </nav>
 
     <script>
-        // --- DATA ---
+        // --- DATA LAYER ---
         const DB_KEY = 'physical_log_odyssey_v1';
         let db = JSON.parse(localStorage.getItem(DB_KEY)) || { users: [], exercises: [], logs: [] };
+
+        // MIGRATION SCRIPT (Pour compatibilité)
+        // Ajoute des couleurs par défaut si elles manquent
+        // Ajoute des unités par défaut si elles manquent
+        const DEFAULT_COLORS = ['#e6194b', '#3cb44b', '#ffe119', '#4363d8', '#f58231', '#911eb4', '#46f0f0', '#f032e6'];
+        db.users.forEach((u, i) => {
+            if(!u.color) u.color = DEFAULT_COLORS[i % DEFAULT_COLORS.length];
+        });
+        db.exercises.forEach(e => {
+            if(!e.unit && e.type === 'cardio') e.unit = 'km';
+            if(!e.unit && e.type === 'strength') e.unit = 'kg';
+        });
+        
         const saveDb = () => localStorage.setItem(DB_KEY, JSON.stringify(db));
 
         // --- UTILS ---
@@ -77,50 +103,17 @@
             return d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' });
         };
 
-        const getIsoWeek = (dateStr) => {
-            const d = new Date(dateStr);
-            const date = new Date(d.getTime());
-            date.setHours(0, 0, 0, 0);
-            date.setDate(date.getDate() + 3 - (date.getDay() + 6) % 7);
-            const week1 = new Date(date.getFullYear(), 0, 4);
-            const week = 1 + Math.round(((date.getTime() - week1.getTime()) / 86400000 - 3 + (week1.getDay() + 6) % 7) / 7);
-            return `${date.getFullYear()}-W${week.toString().padStart(2, '0')}`;
-        };
-
-        // --- COLORS: High Contrast Palette ---
-        // Liste de couleurs distinctes pour éviter les confusions
-        const DISTINCT_COLORS = [
-            '#e6194b', '#3cb44b', '#ffe119', '#4363d8', '#f58231', 
-            '#911eb4', '#46f0f0', '#f032e6', '#bcf60c', '#fabebe', 
-            '#008080', '#e6beff', '#9a6324', '#fffac8', '#800000', 
-            '#aaffc3', '#808000', '#ffd8b1', '#000075', '#808080'
-        ];
-
-        const getStyle = (index) => {
-            const colorIdx = index % DISTINCT_COLORS.length;
-            const styleIdx = Math.floor(index / DISTINCT_COLORS.length);
-            
-            // Si on dépasse 20 athlètes, on change le style de ligne
-            let dash = [];
-            if(styleIdx === 1) dash = [5, 5]; // Pointillés
-            if(styleIdx === 2) dash = [10, 5]; // Tirets longs
-            if(styleIdx === 3) dash = [2, 2]; // Pointillés fins
-
-            return {
-                color: DISTINCT_COLORS[colorIdx],
-                dash: dash
-            };
-        };
+        const getTodayISO = () => new Date().toISOString().split('T')[0];
 
         // --- ROUTING ---
         const app = document.getElementById('app');
         let currentChart = null; 
         
         let statState = {
-            mode: 'compare', // 'compare' | 'athlete'
+            mode: 'compare', 
             scaleZero: false,
             selectedId: null, 
-            athleteViewType: 'strength' // 'strength' | 'cardio'
+            athleteViewType: 'strength'
         };
 
         function highlightNav(route) {
@@ -144,120 +137,105 @@
             if (route === 'log') renderLogView();
             else if (route === 'history') renderHistoryView();
             else if (route === 'stats') renderStatsView();
-            else if (route === 'ranking') renderRankingView();
             else if (route === 'settings') renderSettingsView();
         }
 
-        // --- 1. LOG VIEW ---
-        function renderLogView(editLogId = null) {
-            if(db.users.length === 0 || db.exercises.length === 0) {
-                app.innerHTML = `
-                    <div class="flex flex-col items-center justify-center h-full text-center p-6 space-y-4">
-                        <div class="p-4 bg-yellow-50 rounded-full text-yellow-500">
-                            <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
-                        </div>
-                        <h2 class="text-xl font-bold text-slate-700">Bienvenue</h2>
-                        <p class="text-slate-500">Commencez par créer des données dans Gestion.</p>
-                        <button onclick="router('settings')" class="bg-blue-600 text-white px-6 py-3 rounded-xl font-semibold shadow-lg">Gestion</button>
-                    </div>`;
-                return;
-            }
-
-            let logToEdit = editLogId ? db.logs.find(l => l.id === editLogId) : null;
-            const today = new Date().toISOString().split('T')[0];
+        // --- SHARED FORM BUILDER (For Log View & Modal) ---
+        function buildForm(container, logId = null, onSuccess) {
+            let logToEdit = logId ? db.logs.find(l => l.id === logId) : null;
+            const today = getTodayISO();
             
-            const form = document.createElement('div');
-            form.className = "space-y-6 max-w-lg mx-auto";
-            form.innerHTML = `
-                <h2 class="text-2xl font-bold text-slate-800">${logToEdit ? 'Modifier' : 'Nouvelle Performance'}</h2>
-                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 space-y-4">
-                    <div>
-                        <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Date</label>
-                        <input type="date" id="inputDate" value="${logToEdit ? logToEdit.date : today}" class="block w-full rounded-lg bg-slate-50 border-transparent focus:ring-blue-500">
-                    </div>
-                    <div>
-                        <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Athlète</label>
-                        <select id="inputUser" class="block w-full rounded-lg bg-slate-50 border-transparent focus:ring-blue-500 h-11">
-                            ${db.users.map(u => `<option value="${u.id}" ${logToEdit && logToEdit.userId === u.id ? 'selected' : ''}>${u.name}</option>`).join('')}
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Exercice</label>
-                        <select id="inputEx" class="block w-full rounded-lg bg-slate-50 border-transparent focus:ring-blue-500 h-11" onchange="toggleInputs(this.value)">
-                             ${db.exercises.map(e => `<option value="${e.id}" data-type="${e.type}" ${logToEdit && logToEdit.exId === e.id ? 'selected' : ''}>${e.name}</option>`).join('')}
-                        </select>
-                    </div>
-                </div>
-
-                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
-                    <div id="strengthInputs" class="grid grid-cols-2 gap-4">
+            container.innerHTML = `
+                <div class="space-y-4">
+                    <h2 class="text-xl font-bold text-slate-800 mb-2">${logToEdit ? 'Modifier' : 'Nouvelle Performance'}</h2>
+                    
+                    <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100 space-y-3">
                         <div>
-                            <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Poids (kg)</label>
-                            <input type="number" step="0.5" id="inputWeight" value="${logToEdit ? logToEdit.weight || '' : ''}" class="block w-full text-center text-2xl font-bold rounded-lg bg-slate-50 border-transparent text-blue-600" placeholder="0">
+                            <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Date</label>
+                            <input type="date" id="inputDate" value="${logToEdit ? logToEdit.date : today}" class="block w-full rounded-lg bg-slate-50 border-transparent focus:ring-blue-500">
                         </div>
                         <div>
-                            <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Répétitions</label>
-                            <input type="number" id="inputReps" value="${logToEdit ? logToEdit.reps || '' : ''}" class="block w-full text-center text-2xl font-bold rounded-lg bg-slate-50 border-transparent text-blue-600" placeholder="0">
+                            <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Athlète</label>
+                            <select id="inputUser" class="block w-full rounded-lg bg-slate-50 border-transparent focus:ring-blue-500 h-10">
+                                ${db.users.map(u => `<option value="${u.id}" ${logToEdit && logToEdit.userId === u.id ? 'selected' : ''}>${u.name}</option>`).join('')}
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Exercice</label>
+                            <select id="inputEx" class="block w-full rounded-lg bg-slate-50 border-transparent focus:ring-blue-500 h-10" onchange="window.updateFormInputs(this.value)">
+                                 ${db.exercises.map(e => `<option value="${e.id}" ${logToEdit && logToEdit.exId === e.id ? 'selected' : ''}>${e.name}</option>`).join('')}
+                            </select>
                         </div>
                     </div>
-                    <div id="cardioInputs" class="hidden">
-                        <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Distance (km)</label>
-                        <input type="number" step="0.01" id="inputDist" value="${logToEdit ? logToEdit.distance || '' : ''}" class="block w-full text-center text-2xl font-bold rounded-lg bg-slate-50 border-transparent text-green-600" placeholder="0.00">
-                    </div>
-                    <div id="rmPreview" class="mt-4 pt-4 border-t border-slate-100 text-center hidden">
-                        <span class="text-xs uppercase font-bold text-slate-400">Max Théorique</span>
-                        <div class="text-3xl font-black text-slate-800 tracking-tighter"><span id="rmValue">--</span> <span class="text-lg font-medium text-slate-400">kg</span></div>
-                    </div>
-                </div>
 
-                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
-                    <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Commentaire</label>
-                    <textarea id="inputComment" rows="2" class="block w-full rounded-lg bg-slate-50 border-transparent focus:ring-blue-500">${logToEdit ? logToEdit.comment || '' : ''}</textarea>
-                </div>
+                    <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100">
+                        <div id="dynamicInputs"></div>
+                        <div id="rmPreview" class="mt-3 pt-3 border-t border-slate-100 text-center hidden">
+                            <span class="text-xs uppercase font-bold text-slate-400">Max Théorique</span>
+                            <div class="text-2xl font-black text-slate-800"><span id="rmValue">--</span> <span class="text-sm text-slate-400">kg</span></div>
+                        </div>
+                    </div>
 
-                <div class="pt-2 flex gap-3">
-                    ${logToEdit ? `<button onclick="router('history')" class="flex-1 bg-slate-100 text-slate-500 font-bold py-4 rounded-xl">Annuler</button>` : ''}
-                    <button id="saveBtn" class="flex-[2] bg-blue-600 text-white font-bold py-4 rounded-xl shadow-lg hover:bg-blue-700 transition active:scale-95">
+                    <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100">
+                        <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Commentaire</label>
+                        <textarea id="inputComment" rows="2" class="block w-full rounded-lg bg-slate-50 border-transparent focus:ring-blue-500">${logToEdit ? logToEdit.comment || '' : ''}</textarea>
+                    </div>
+
+                    <button id="saveBtn" class="w-full bg-blue-600 text-white font-bold py-3 rounded-xl shadow-lg hover:bg-blue-700 transition active:scale-95">
                         ${logToEdit ? 'Mettre à jour' : 'Enregistrer'}
                     </button>
                 </div>
             `;
-            app.appendChild(form);
 
-            const exSelect = document.getElementById('inputEx');
-            const wInput = document.getElementById('inputWeight');
-            const rInput = document.getElementById('inputReps');
-            
-            window.toggleInputs = (exId) => {
+            // Function exposed to window so the inline onchange works
+            window.updateFormInputs = (exId) => {
                 const ex = db.exercises.find(e => e.id === exId);
+                const div = document.getElementById('dynamicInputs');
+                const rmP = document.getElementById('rmPreview');
+                
                 if(!ex) return;
-                const sDiv = document.getElementById('strengthInputs');
-                const cDiv = document.getElementById('cardioInputs');
-                const rmPreview = document.getElementById('rmPreview');
-                if (ex.type === 'cardio') {
-                    sDiv.classList.add('hidden'); rmPreview.classList.add('hidden'); cDiv.classList.remove('hidden');
+
+                if(ex.type === 'strength') {
+                    rmP.classList.remove('hidden');
+                    div.innerHTML = `
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Poids (kg)</label>
+                                <input type="number" step="0.5" id="inputVal1" value="${logToEdit ? logToEdit.weight : ''}" class="block w-full text-center text-xl font-bold rounded-lg bg-slate-50 border-transparent text-blue-600" placeholder="0">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Répétitions</label>
+                                <input type="number" id="inputVal2" value="${logToEdit ? logToEdit.reps : ''}" class="block w-full text-center text-xl font-bold rounded-lg bg-slate-50 border-transparent text-blue-600" placeholder="0">
+                            </div>
+                        </div>`;
+                    
+                    // Live RM Calc
+                    const calc = () => {
+                        const w = parseFloat(document.getElementById('inputVal1').value);
+                        const r = parseFloat(document.getElementById('inputVal2').value);
+                        if(w && r) document.getElementById('rmValue').innerText = calculate1RM(w,r);
+                    };
+                    document.getElementById('inputVal1').addEventListener('input', calc);
+                    document.getElementById('inputVal2').addEventListener('input', calc);
+                    calc(); // Init
                 } else {
-                    sDiv.classList.remove('hidden'); cDiv.classList.add('hidden'); rmPreview.classList.remove('hidden');
+                    rmP.classList.add('hidden');
+                    div.innerHTML = `
+                        <div>
+                            <label class="block text-xs font-bold text-slate-400 uppercase mb-1">${ex.unit || 'Performance'}</label>
+                            <input type="number" step="0.01" id="inputVal1" value="${logToEdit ? logToEdit.distance : ''}" class="block w-full text-center text-xl font-bold rounded-lg bg-slate-50 border-transparent text-green-600" placeholder="0">
+                        </div>`;
                 }
             };
 
-            const updateRM = () => {
-                const w = parseFloat(wInput.value);
-                const r = parseFloat(rInput.value);
-                if(w && r) {
-                    document.getElementById('rmValue').textContent = calculate1RM(w, r);
-                    document.getElementById('rmPreview').classList.remove('hidden');
-                } else document.getElementById('rmPreview').classList.add('hidden');
-            };
-
-            wInput.addEventListener('input', updateRM);
-            rInput.addEventListener('input', updateRM);
-            
-            if(db.exercises.length > 0) { toggleInputs(exSelect.value); updateRM(); }
+            // Init form
+            const initialExId = logToEdit ? logToEdit.exId : document.getElementById('inputEx').value;
+            window.updateFormInputs(initialExId);
 
             document.getElementById('saveBtn').onclick = () => {
-                const exId = exSelect.value;
+                const exId = document.getElementById('inputEx').value;
                 const ex = db.exercises.find(e => e.id === exId);
+                
                 const newLog = {
                     id: logToEdit ? logToEdit.id : generateId(),
                     date: document.getElementById('inputDate').value,
@@ -267,14 +245,17 @@
                     timestamp: Date.now()
                 };
 
+                const v1 = parseFloat(document.getElementById('inputVal1').value);
+
                 if(ex.type === 'strength') {
-                    newLog.weight = parseFloat(wInput.value);
-                    newLog.reps = parseFloat(rInput.value);
-                    newLog.rm1 = calculate1RM(newLog.weight, newLog.reps);
-                    if(!newLog.weight || !newLog.reps) return alert("Poids/Reps requis");
+                    const v2 = parseFloat(document.getElementById('inputVal2').value);
+                    if(!v1 || !v2) return alert("Données incomplètes");
+                    newLog.weight = v1;
+                    newLog.reps = v2;
+                    newLog.rm1 = calculate1RM(v1, v2);
                 } else {
-                    newLog.distance = parseFloat(document.getElementById('inputDist').value);
-                    if(!newLog.distance) return alert("Distance requise");
+                    if(!v1 && v1 !== 0) return alert("Donnée incomplète");
+                    newLog.distance = v1; // We store cardio value in 'distance' property for legacy compatibility, even if unit is different
                 }
 
                 if(logToEdit) {
@@ -283,38 +264,60 @@
                 } else db.logs.push(newLog);
                 
                 saveDb();
-                router('history');
+                onSuccess();
             };
         }
 
-        // --- 2. HISTORY VIEW ---
+        // --- 1. LOG VIEW ---
+        function renderLogView() {
+            if(db.users.length === 0 || db.exercises.length === 0) {
+                app.innerHTML = `<div class="text-center p-10 text-slate-500">Créez d'abord des athlètes et exercices dans Gestion.</div>`;
+                return;
+            }
+            const container = document.createElement('div');
+            container.className = "max-w-lg mx-auto";
+            app.appendChild(container);
+            buildForm(container, null, () => router('history'));
+        }
+
+        // --- 2. HISTORY VIEW (Advanced Filters & Modal Edit) ---
         function renderHistoryView() {
             const container = document.createElement('div');
             container.className = "max-w-lg mx-auto pb-6";
             container.innerHTML = `
                 <h2 class="text-2xl font-bold text-slate-800 mb-4 sticky top-0 bg-slate-50 z-10 py-2">Historique</h2>
+                
                 <div class="bg-white p-3 rounded-xl shadow-sm border border-slate-100 mb-4 grid grid-cols-2 gap-2">
-                    <input type="month" id="filterMonth" class="w-full text-sm p-1.5 bg-slate-50 border-none rounded">
-                    <input type="week" id="filterWeek" class="w-full text-sm p-1.5 bg-slate-50 border-none rounded">
-                    <button id="clearFilters" class="col-span-2 text-xs text-blue-600 font-bold py-2 hidden">Afficher tout</button>
+                    <input type="date" id="filterDate" class="w-full text-sm p-1.5 bg-slate-50 border-none rounded">
+                    <select id="filterUser" class="w-full text-sm p-1.5 bg-slate-50 border-none rounded">
+                        <option value="">Tous les athlètes</option>
+                        ${db.users.map(u => `<option value="${u.id}">${u.name}</option>`).join('')}
+                    </select>
+                    <select id="filterEx" class="col-span-2 w-full text-sm p-1.5 bg-slate-50 border-none rounded">
+                        <option value="">Tous les exercices</option>
+                        ${db.exercises.map(e => `<option value="${e.id}">${e.name}</option>`).join('')}
+                    </select>
+                    <button id="clearFilters" class="col-span-2 text-xs text-blue-600 font-bold py-2 hidden">Effacer les filtres</button>
                 </div>
+                
                 <div id="logsList" class="space-y-3"></div>
             `;
             app.appendChild(container);
 
             const logsListEl = document.getElementById('logsList');
-            const filterMonthEl = document.getElementById('filterMonth');
-            const filterWeekEl = document.getElementById('filterWeek');
+            const fDate = document.getElementById('filterDate');
+            const fUser = document.getElementById('filterUser');
+            const fEx = document.getElementById('filterEx');
             const clearBtn = document.getElementById('clearFilters');
 
             const renderLogs = (logs) => {
                 logsListEl.innerHTML = '';
                 if(logs.length === 0) {
-                    logsListEl.innerHTML = `<div class="text-center text-slate-400 py-10 italic">Aucune donnée.</div>`;
+                    logsListEl.innerHTML = `<div class="text-center text-slate-400 py-10 italic">Aucune donnée trouvée.</div>`;
                     return;
                 }
                 logs.forEach(log => {
-                    const user = db.users.find(u => u.id === log.userId)?.name || 'Inconnu';
+                    const user = db.users.find(u => u.id === log.userId) || { name: '?', color: '#ccc' };
                     const ex = db.exercises.find(e => e.id === log.exId);
                     
                     let content, badge;
@@ -322,26 +325,33 @@
                         content = `<span class="font-bold text-slate-800">${log.weight}kg</span> <span class="text-slate-500 text-sm">x${log.reps}</span>`;
                         if(log.rm1) content += ` <span class="text-xs text-blue-600 font-bold">(RM:${log.rm1})</span>`;
                         badge = 'bg-blue-100 text-blue-700';
-                    } else {
-                        content = `<span class="font-bold text-slate-800">${log.distance ? log.distance.toFixed(2) : '--'} km</span>`;
+                    } else if(ex) {
+                        content = `<span class="font-bold text-slate-800">${log.distance} ${ex.unit}</span>`;
                         badge = 'bg-green-100 text-green-700';
+                    } else {
+                        content = 'Donnée orpheline';
+                        badge = 'bg-gray-100 text-gray-500';
                     }
 
                     const card = document.createElement('div');
                     card.className = "bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex justify-between items-center";
+                    // Petit rond de couleur pour l'athlète
                     card.innerHTML = `
                         <div class="flex-1">
                             <div class="flex items-center gap-2 mb-1">
                                 <span class="text-[10px] font-bold uppercase text-slate-400">${formatDate(log.date)}</span>
-                                <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase ${badge}">${user}</span>
+                                <div class="flex items-center gap-1 px-2 py-0.5 rounded bg-slate-100">
+                                    <div class="w-2 h-2 rounded-full" style="background-color:${user.color}"></div>
+                                    <span class="text-[10px] font-bold uppercase text-slate-600">${user.name}</span>
+                                </div>
                             </div>
                             <div class="font-bold text-slate-700">${ex ? ex.name : 'Exercice supprimé'}</div>
                             <div class="mt-1">${content}</div>
                             ${log.comment ? `<div class="mt-1 text-xs text-slate-500 italic">"${log.comment}"</div>` : ''}
                         </div>
                         <div class="flex flex-col gap-2 pl-3 border-l border-slate-50">
-                            <button onclick="editLog('${log.id}')" class="text-blue-400 hover:text-blue-600">✎</button>
-                            <button onclick="deleteLog('${log.id}')" class="text-red-300 hover:text-red-500">✕</button>
+                            <button onclick="showEditModal('${log.id}')" class="text-blue-400 hover:text-blue-600 text-xl">✎</button>
+                            <button onclick="deleteLog('${log.id}')" class="text-red-300 hover:text-red-500 text-xl">✕</button>
                         </div>
                     `;
                     logsListEl.appendChild(card);
@@ -350,32 +360,54 @@
 
             const applyFilters = () => {
                 let filtered = [...db.logs].sort((a,b) => new Date(b.date) - new Date(a.date));
-                if (filterMonthEl.value) {
-                    filtered = filtered.filter(l => l.date.startsWith(filterMonthEl.value));
-                    filterWeekEl.value = ''; clearBtn.classList.remove('hidden');
-                } else if (filterWeekEl.value) {
-                    filtered = filtered.filter(l => getIsoWeek(l.date) === filterWeekEl.value);
-                    filterMonthEl.value = ''; clearBtn.classList.remove('hidden');
-                } else clearBtn.classList.add('hidden');
+                
+                if(fDate.value) filtered = filtered.filter(l => l.date === fDate.value);
+                if(fUser.value) filtered = filtered.filter(l => l.userId === fUser.value);
+                if(fEx.value) filtered = filtered.filter(l => l.exId === fEx.value);
+
+                if(fDate.value || fUser.value || fEx.value) clearBtn.classList.remove('hidden');
+                else clearBtn.classList.add('hidden');
+
                 renderLogs(filtered);
             };
 
-            filterMonthEl.addEventListener('change', applyFilters);
-            filterWeekEl.addEventListener('change', applyFilters);
-            clearBtn.addEventListener('click', () => { filterMonthEl.value = ''; filterWeekEl.value = ''; applyFilters(); });
+            [fDate, fUser, fEx].forEach(el => el.addEventListener('change', applyFilters));
+            clearBtn.addEventListener('click', () => { 
+                fDate.value = ''; fUser.value = ''; fEx.value = ''; 
+                applyFilters(); 
+            });
             applyFilters();
         }
 
-        window.editLog = (id) => renderLogView(id);
+        // Modal Logic
+        const modalContainer = document.getElementById('modalContainer');
+        const modalContent = document.getElementById('modalContent');
+        
+        window.showEditModal = (id) => {
+            buildForm(modalContent, id, () => {
+                closeModal();
+                router('history'); // Refresh list
+            });
+            modalContainer.classList.remove('hidden');
+        };
+        
+        window.closeModal = () => {
+            modalContainer.classList.add('hidden');
+            modalContent.innerHTML = '';
+        };
+
         window.deleteLog = (id) => { if(confirm("Supprimer ?")) { db.logs = db.logs.filter(l => l.id !== id); saveDb(); router('history'); }};
 
-        // --- 3. STATS VIEW ---
+        // --- 3. STATS VIEW (Chart Logic Fixed) ---
         function renderStatsView() {
             const container = document.createElement('div');
             container.className = "max-w-lg mx-auto flex flex-col h-full";
             
             container.innerHTML = `
-                <h2 class="text-2xl font-bold text-slate-800 mb-4">Analyse</h2>
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-2xl font-bold text-slate-800">Analyse</h2>
+                    <button onclick="toggleFullscreen()" class="text-xs bg-slate-200 px-2 py-1 rounded">⛶ Plein écran</button>
+                </div>
                 
                 <div class="flex border-b border-slate-200 mb-4">
                     <button id="tabCompare" class="flex-1 pb-2 text-sm font-medium transition ${statState.mode === 'compare' ? 'tab-active' : 'tab-inactive'}">Comparatif</button>
@@ -397,68 +429,59 @@
                     </div>
                 </div>
 
-                <div class="bg-white p-2 rounded-xl shadow-lg border border-slate-100 flex-1 relative min-h-[300px] mb-4 overflow-hidden">
+                <div id="chartWrapper" class="bg-white p-2 rounded-xl shadow-lg border border-slate-100 flex-1 relative min-h-[300px] mb-4 overflow-hidden">
                     <canvas id="perfChart"></canvas>
                 </div>
             `;
             app.appendChild(container);
 
+            // Tab Handlers
             document.getElementById('tabCompare').onclick = () => { statState.mode = 'compare'; statState.selectedId = null; renderStatsView(); };
             document.getElementById('tabAthlete').onclick = () => { statState.mode = 'athlete'; statState.selectedId = null; renderStatsView(); };
-            
+
+            // Fullscreen Logic
+            window.toggleFullscreen = () => {
+                const elem = document.getElementById("chartWrapper");
+                if (!document.fullscreenElement) {
+                    elem.requestFullscreen().catch(err => {
+                        alert(`Erreur: ${err.message}`);
+                    });
+                } else {
+                    document.exitFullscreen();
+                }
+            };
+
             const selectionArea = document.getElementById('selectionArea');
             const selectId = 'statSelect';
 
-            window.filterOptions = (input) => {
-                const term = input.value.toLowerCase();
-                const select = document.getElementById(selectId);
-                Array.from(select.options).forEach(opt => {
-                    opt.hidden = !opt.text.toLowerCase().includes(term);
-                });
-            };
-
-            // Dynamic Controls Generation
-            if (statState.mode === 'compare') {
-                const defaultEx = db.exercises.length > 0 ? db.exercises[0].id : '';
-                if (!statState.selectedId && defaultEx) statState.selectedId = defaultEx;
-
-                selectionArea.innerHTML = `
-                    <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Exercice</label>
-                    <div class="flex gap-2">
-                        <div class="flex-1">
-                            <input type="text" placeholder="Rechercher..." class="block w-full text-sm mb-1 p-1 rounded bg-slate-50 border-none" oninput="filterOptions(this)">
-                            <select id="${selectId}" class="block w-full rounded-lg border-slate-200 bg-white p-2 text-sm font-semibold">
-                                ${db.exercises.map(e => `<option value="${e.id}" ${statState.selectedId === e.id ? 'selected' : ''}>${e.name}</option>`).join('')}
-                            </select>
+            // Filter UI Helper
+            const createFilterUI = () => {
+                if (statState.mode === 'compare') {
+                    const defaultEx = db.exercises.length > 0 ? db.exercises[0].id : '';
+                    if (!statState.selectedId && defaultEx) statState.selectedId = defaultEx;
+                    selectionArea.innerHTML = `
+                        <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Exercice</label>
+                        <select id="${selectId}" class="block w-full rounded-lg border-slate-200 bg-white p-2 text-sm font-semibold">
+                            ${db.exercises.map(e => `<option value="${e.id}" ${statState.selectedId === e.id ? 'selected' : ''}>${e.name}</option>`).join('')}
+                        </select>
+                    `;
+                } else {
+                    const defaultUser = db.users.length > 0 ? db.users[0].id : '';
+                    if (!statState.selectedId && defaultUser) statState.selectedId = defaultUser;
+                    selectionArea.innerHTML = `
+                        <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Athlète</label>
+                        <select id="${selectId}" class="block w-full rounded-lg border-slate-200 bg-white p-2 text-sm font-semibold mb-2">
+                             ${db.users.map(u => `<option value="${u.id}" ${statState.selectedId === u.id ? 'selected' : ''}>${u.name}</option>`).join('')}
+                        </select>
+                         <div class="flex bg-slate-100 p-1 rounded-lg">
+                            <button id="typeStrength" class="flex-1 py-1 text-xs font-bold rounded ${statState.athleteViewType === 'strength' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400'}" onclick="setAthleteType('strength')">FORCE</button>
+                            <button id="typeCardio" class="flex-1 py-1 text-xs font-bold rounded ${statState.athleteViewType === 'cardio' ? 'bg-white text-green-600 shadow-sm' : 'text-slate-400'}" onclick="setAthleteType('cardio')">CARDIO</button>
                         </div>
-                        <button onclick="router('ranking')" class="bg-yellow-100 text-yellow-700 p-2 rounded-lg h-full flex items-center justify-center shadow-sm" title="Voir le classement">
-                            <span class="text-xl">🏆</span>
-                        </button>
-                    </div>
-                `;
-            } else {
-                // Athlete Mode: Needs Type Toggle (Cardio/Strength)
-                const defaultUser = db.users.length > 0 ? db.users[0].id : '';
-                if (!statState.selectedId && defaultUser) statState.selectedId = defaultUser;
-
-                selectionArea.innerHTML = `
-                    <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Athlète</label>
-                    <input type="text" placeholder="Rechercher..." class="block w-full text-sm mb-1 p-1 rounded bg-slate-50 border-none" oninput="filterOptions(this)">
-                    <select id="${selectId}" class="block w-full rounded-lg border-slate-200 bg-white p-2 text-sm font-semibold mb-3">
-                         ${db.users.map(u => `<option value="${u.id}" ${statState.selectedId === u.id ? 'selected' : ''}>${u.name}</option>`).join('')}
-                    </select>
-                    
-                    <div class="flex bg-slate-100 p-1 rounded-lg">
-                        <button id="typeStrength" class="flex-1 py-1 text-xs font-bold rounded ${statState.athleteViewType === 'strength' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400'}" onclick="setAthleteType('strength')">FORCE</button>
-                        <button id="typeCardio" class="flex-1 py-1 text-xs font-bold rounded ${statState.athleteViewType === 'cardio' ? 'bg-white text-green-600 shadow-sm' : 'text-slate-400'}" onclick="setAthleteType('cardio')">CARDIO</button>
-                    </div>
-                `;
-                
-                window.setAthleteType = (t) => {
-                    statState.athleteViewType = t;
-                    renderStatsView(); // Re-render to update chart and button styles
-                };
-            }
+                    `;
+                    window.setAthleteType = (t) => { statState.athleteViewType = t; renderStatsView(); };
+                }
+            };
+            createFilterUI();
 
             const ctx = document.getElementById('perfChart').getContext('2d');
             
@@ -469,88 +492,122 @@
                 statState.selectedId = select.value;
                 const datasets = [];
                 let allLabels = new Set();
-                let yAxisLabel = "Kg";
+                let yAxisLabel = "";
+
+                const todayISO = getTodayISO();
+
+                // Helper to add projection point
+                const addProjection = (dataPoints) => {
+                    if(dataPoints.length > 0) {
+                        const lastPt = dataPoints[dataPoints.length - 1];
+                        if(lastPt.x !== formatDate(todayISO)) {
+                            // On ajoute un point "Aujourd'hui" avec la même valeur
+                            // Mais on lui donnera un radius de 0 dans le dataset pour qu'il soit invisible (juste le trait)
+                            dataPoints.push({ x: formatDate(todayISO), y: lastPt.y, isProjection: true });
+                        }
+                    }
+                    return dataPoints;
+                };
 
                 if (statState.mode === 'compare') {
                     const exId = statState.selectedId;
                     const ex = db.exercises.find(e => e.id === exId);
-                    yAxisLabel = ex.type === 'strength' ? 'Max Estimé (kg)' : 'Distance (km)';
+                    yAxisLabel = `${ex.name} (${ex.unit || 'val'})`;
                     
-                    db.users.forEach((user, idx) => {
+                    db.users.forEach(user => {
                         const logs = db.logs
                             .filter(l => l.userId === user.id && l.exId === exId)
                             .sort((a,b) => new Date(a.date) - new Date(b.date));
                         
-                        // Check if valid data exists
                         const validLogs = logs.filter(l => (ex.type === 'strength' ? l.rm1 > 0 : l.distance > 0));
 
                         if(validLogs.length > 0) {
-                            validLogs.forEach(l => allLabels.add(l.date));
-                            const style = getStyle(idx);
+                            let dataPoints = validLogs.map(l => ({
+                                x: formatDate(l.date), 
+                                y: ex.type === 'strength' ? l.rm1 : l.distance
+                            }));
+                            
+                            // Projection Logic
+                            dataPoints = addProjection(dataPoints);
+                            dataPoints.forEach(p => allLabels.add(p.x));
+
                             datasets.push({
                                 label: user.name,
-                                data: validLogs.map(l => ({x: formatDate(l.date), y: ex.type === 'strength' ? l.rm1 : l.distance})),
-                                borderColor: style.color,
-                                backgroundColor: style.color,
-                                borderDash: style.dash,
-                                tension: 0.3,
-                                pointRadius: 4,
-                                pointHoverRadius: 7
+                                data: dataPoints,
+                                borderColor: user.color,
+                                backgroundColor: user.color,
+                                tension: 0, // Lignes droites
+                                pointRadius: (ctx) => ctx.raw.isProjection ? 0 : 4, // Pas de point si projection
+                                pointHoverRadius: (ctx) => ctx.raw.isProjection ? 0 : 7,
+                                borderDash: []
                             });
                         }
                     });
                 } else {
-                    // Athlete Mode
                     const userId = statState.selectedId;
-                    const targetType = statState.athleteViewType; // 'strength' or 'cardio'
-                    yAxisLabel = targetType === 'strength' ? 'Max Estimé (kg)' : 'Distance (km)';
+                    const targetType = statState.athleteViewType;
+                    yAxisLabel = targetType === 'strength' ? 'Poids (kg)' : 'Distance / Répétitions';
 
                     db.exercises.filter(e => e.type === targetType).forEach((ex, idx) => {
-                        const logs = db.logs
-                            .filter(l => l.userId === userId && l.exId === ex.id)
-                            .sort((a,b) => new Date(a.date) - new Date(b.date));
-                        
+                         // Default color palette for exercises since exercises don't have user colors
+                        const colors = ['#e6194b', '#3cb44b', '#ffe119', '#4363d8', '#f58231'];
+                        const color = colors[idx % colors.length];
+
+                        const logs = db.logs.filter(l => l.userId === userId && l.exId === ex.id).sort((a,b) => new Date(a.date) - new Date(b.date));
                         const validLogs = logs.filter(l => (targetType === 'strength' ? l.rm1 > 0 : l.distance > 0));
 
                         if(validLogs.length > 0) {
-                            validLogs.forEach(l => allLabels.add(l.date));
-                            const style = getStyle(idx);
+                            let dataPoints = validLogs.map(l => ({
+                                x: formatDate(l.date), 
+                                y: targetType === 'strength' ? l.rm1 : l.distance
+                            }));
+
+                            dataPoints = addProjection(dataPoints);
+                            dataPoints.forEach(p => allLabels.add(p.x));
+
                             datasets.push({
                                 label: ex.name,
-                                data: validLogs.map(l => ({x: formatDate(l.date), y: targetType === 'strength' ? l.rm1 : l.distance})),
-                                borderColor: style.color,
-                                backgroundColor: style.color,
-                                borderDash: style.dash,
-                                tension: 0.3,
-                                pointRadius: 4,
-                                pointHoverRadius: 7
+                                data: dataPoints,
+                                borderColor: color,
+                                backgroundColor: color,
+                                tension: 0,
+                                pointRadius: (ctx) => ctx.raw.isProjection ? 0 : 4,
+                                pointHoverRadius: (ctx) => ctx.raw.isProjection ? 0 : 7,
                             });
                         }
                     });
                 }
 
-                const sortedLabelsISO = Array.from(allLabels).sort((a,b) => new Date(a) - new Date(b));
-                const friendlyLabels = sortedLabelsISO.map(d => formatDate(d));
+                // Sort dates specifically for Chart.js
+                // Note: formatDate returns "dd/mm/yyyy", we need to parse back to sort correctly
+                const parseFrDate = (str) => {
+                    const [d, m, y] = str.split('/');
+                    return new Date(`${y}-${m}-${d}`);
+                };
                 
+                const sortedLabels = Array.from(allLabels).sort((a,b) => parseFrDate(a) - parseFrDate(b));
+
                 if(currentChart) currentChart.destroy();
                 
                 currentChart = new Chart(ctx, {
                     type: 'line',
-                    data: { labels: friendlyLabels, datasets },
+                    data: { labels: sortedLabels, datasets },
                     options: {
                         responsive: true,
                         maintainAspectRatio: false,
                         interaction: { mode: 'nearest', intersect: false },
                         plugins: {
-                            legend: { display: true, position: 'bottom', labels: { boxWidth: 12, padding: 15, usePointStyle: true } },
-                            tooltip: { callbacks: { title: (c) => c[0].label } }
+                            legend: { display: true, position: 'bottom', labels: { boxWidth: 12, usePointStyle: true } },
+                            tooltip: { 
+                                callbacks: { 
+                                    title: (c) => c[0].label,
+                                    label: (c) => c.raw.isProjection ? `${c.dataset.label}: (Projection)` : `${c.dataset.label}: ${c.formattedValue}`
+                                } 
+                            }
                         },
                         scales: {
-                            x: { grid: { display: false }, ticks: { maxRotation: 45, minRotation: 0 } },
-                            y: { 
-                                beginAtZero: statState.scaleZero,
-                                title: { display: true, text: yAxisLabel }
-                            }
+                            x: { grid: { display: false } },
+                            y: { beginAtZero: statState.scaleZero, title: { display: true, text: yAxisLabel } }
                         }
                     }
                 });
@@ -568,103 +625,43 @@
             updateChart();
         }
 
-        // --- 4. RANKING VIEW ---
-        function renderRankingView() {
-            // Need selected Exercise ID from state or default
-            let exId = statState.selectedId;
-            // Fallback if we came here directly without selection (unlikely but safe)
-            if(!exId || !db.exercises.find(e => e.id === exId)) {
-                if(db.exercises.length > 0) exId = db.exercises[0].id;
-                else return; 
-            }
-            
-            const ex = db.exercises.find(e => e.id === exId);
-            const isStrength = ex.type === 'strength';
-            const unit = isStrength ? 'kg' : 'km';
-            
-            // Logic: For this exercise, find the BEST perf for each user
-            let rankings = [];
-            db.users.forEach(user => {
-                const userLogs = db.logs.filter(l => l.userId === user.id && l.exId === exId);
-                if(userLogs.length === 0) return;
-                
-                let bestVal = 0;
-                let bestDate = '';
-                
-                userLogs.forEach(l => {
-                    const val = isStrength ? (l.rm1 || 0) : (l.distance || 0);
-                    if(val > bestVal) { bestVal = val; bestDate = l.date; }
-                });
-
-                if(bestVal > 0) {
-                    rankings.push({ name: user.name, val: bestVal, date: bestDate });
-                }
-            });
-
-            // Sort Descending
-            rankings.sort((a,b) => b.val - a.val);
-
-            const container = document.createElement('div');
-            container.className = "max-w-lg mx-auto pb-6 fade-in";
-            container.innerHTML = `
-                <div class="flex items-center gap-2 mb-6">
-                    <button onclick="router('stats')" class="bg-slate-100 p-2 rounded-full hover:bg-slate-200">
-                        <svg class="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
-                    </button>
-                    <h2 class="text-xl font-bold text-slate-800">Classement</h2>
-                </div>
-                
-                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 text-center mb-6">
-                    <div class="text-xs uppercase font-bold text-slate-400 mb-1">Exercice</div>
-                    <div class="text-xl font-bold text-blue-600">${ex.name}</div>
-                    <div class="text-[10px] text-slate-400 mt-1">Meilleure perf enregistrée (PR)</div>
-                </div>
-
-                <div class="space-y-3">
-                    ${rankings.map((r, i) => {
-                        let medal = '';
-                        if(i === 0) medal = '🥇';
-                        else if(i === 1) medal = '🥈';
-                        else if(i === 2) medal = '🥉';
-                        else medal = `<span class="font-bold text-slate-400 w-6 text-center inline-block">${i+1}.</span>`;
-
-                        return `
-                        <div class="flex items-center justify-between bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
-                            <div class="flex items-center gap-3">
-                                <div class="text-xl">${medal}</div>
-                                <div class="font-bold text-slate-700">${r.name}</div>
-                            </div>
-                            <div class="text-right">
-                                <div class="font-bold text-lg text-slate-800">${r.val} <span class="text-xs font-normal text-slate-500">${unit}</span></div>
-                                <div class="text-[10px] text-slate-400">${formatDate(r.date)}</div>
-                            </div>
-                        </div>`;
-                    }).join('')}
-                    ${rankings.length === 0 ? '<div class="text-center text-slate-400 italic">Aucune donnée pour classer.</div>' : ''}
-                </div>
-            `;
-            app.appendChild(container);
-        }
-
-        // --- 5. SETTINGS VIEW ---
+        // --- 5. SETTINGS VIEW (Color Picker, Export/Import, Units) ---
         function renderSettingsView() {
             const container = document.createElement('div');
             container.className = "max-w-lg mx-auto space-y-6 pb-8";
             container.innerHTML = `<h2 class="text-2xl font-bold text-slate-800 mb-2">Gestion</h2>`;
 
+            // DATA BACKUP
+            const backupBox = document.createElement('div');
+            backupBox.className = "bg-white p-5 rounded-xl shadow-sm border border-slate-100";
+            backupBox.innerHTML = `
+                <h3 class="font-bold text-slate-700 mb-2">Sauvegarde des données</h3>
+                <p class="text-xs text-slate-500 mb-3">Exportez vos données en fichier JSON pour les sauvegarder sur votre Google Drive ou ailleurs.</p>
+                <div class="flex gap-2">
+                    <button id="exportBtn" class="bg-blue-100 text-blue-700 px-3 py-2 rounded-lg text-sm font-bold flex-1">⬇ Exporter</button>
+                    <button onclick="document.getElementById('importFile').click()" class="bg-slate-100 text-slate-700 px-3 py-2 rounded-lg text-sm font-bold flex-1">⬆ Restaurer</button>
+                    <input type="file" id="importFile" class="hidden" accept=".json">
+                </div>
+            `;
+            container.appendChild(backupBox);
+
+            // USERS
             const userBox = document.createElement('div');
             userBox.className = "bg-white p-5 rounded-xl shadow-sm border border-slate-100";
             userBox.innerHTML = `
-                <h3 class="font-bold text-slate-700 mb-3">Athlètes</h3>
+                <h3 class="font-bold text-slate-700 mb-3">Athlètes & Couleurs</h3>
                 <div class="flex gap-2 mb-4">
-                    <input type="text" id="newUserName" placeholder="Nom..." class="flex-1 rounded-lg bg-slate-50 border-none text-sm p-2 focus:ring-2 focus:ring-green-500">
-                    <button id="addUserBtn" class="bg-green-500 text-white rounded-lg px-3 hover:bg-green-600 transition shadow-sm font-bold">+</button>
+                    <input type="text" id="newUserName" placeholder="Nom..." class="flex-1 rounded-lg bg-slate-50 border-none text-sm p-2">
+                    <button id="addUserBtn" class="bg-green-500 text-white rounded-lg px-3 font-bold">+</button>
                 </div>
                 <ul class="space-y-2 max-h-60 overflow-y-auto custom-scrollbar">
                     ${db.users.map(u => `
-                        <li class="flex justify-between items-center bg-slate-50 p-3 rounded-lg border border-slate-100 group">
-                            <span class="font-medium text-slate-700">${u.name}</span>
-                            <div class="flex gap-2 opacity-100">
+                        <li class="flex justify-between items-center bg-slate-50 p-2 rounded-lg border border-slate-100">
+                            <div class="flex items-center gap-2">
+                                <input type="color" value="${u.color}" onchange="updateUserColor('${u.id}', this.value)" class="w-8 h-8 rounded cursor-pointer border-none p-0 bg-transparent">
+                                <span class="font-medium text-slate-700">${u.name}</span>
+                            </div>
+                            <div class="flex gap-2">
                                 <button onclick="renameUser('${u.id}')" class="text-slate-400 hover:text-blue-500">✎</button>
                                 <button onclick="deleteUser('${u.id}')" class="text-slate-400 hover:text-red-500">✕</button>
                             </div>
@@ -673,24 +670,34 @@
                 </ul>`;
             container.appendChild(userBox);
 
+            // EXERCISES
             const exBox = document.createElement('div');
             exBox.className = "bg-white p-5 rounded-xl shadow-sm border border-slate-100";
             exBox.innerHTML = `
                 <h3 class="font-bold text-slate-700 mb-3">Exercices</h3>
                 <div class="flex gap-2 mb-2">
-                    <input type="text" id="newExName" placeholder="Nom..." class="flex-1 rounded-lg bg-slate-50 border-none text-sm p-2 focus:ring-2 focus:ring-blue-500">
-                    <select id="newExType" class="rounded-lg bg-slate-50 border-none text-sm p-2">
+                    <input type="text" id="newExName" placeholder="Nom..." class="flex-1 rounded-lg bg-slate-50 border-none text-sm p-2">
+                    <select id="newExType" class="rounded-lg bg-slate-50 border-none text-sm p-2 w-24">
                         <option value="strength">Muscu</option>
                         <option value="cardio">Cardio</option>
                     </select>
                 </div>
-                <button id="addExBtn" class="w-full bg-blue-600 text-white rounded-lg p-2 text-sm font-bold mb-4 shadow hover:bg-blue-700">Ajouter</button>
+                <div id="unitSelectorDiv" class="mb-2 hidden">
+                     <label class="text-xs text-slate-400 font-bold uppercase">Unité :</label>
+                     <div class="flex gap-2 mt-1">
+                        <label class="flex items-center gap-1 text-sm"><input type="radio" name="newExUnit" value="km" checked> km</label>
+                        <label class="flex items-center gap-1 text-sm"><input type="radio" name="newExUnit" value="m"> m</label>
+                        <label class="flex items-center gap-1 text-sm"><input type="radio" name="newExUnit" value="réps"> réps/pas</label>
+                     </div>
+                </div>
+
+                <button id="addExBtn" class="w-full bg-blue-600 text-white rounded-lg p-2 text-sm font-bold mb-4">Ajouter</button>
                 <ul class="space-y-2 max-h-60 overflow-y-auto custom-scrollbar">
                     ${db.exercises.map(e => `
-                        <li class="flex justify-between items-center bg-slate-50 p-3 rounded-lg border border-slate-100">
+                        <li class="flex justify-between items-center bg-slate-50 p-2 rounded-lg border border-slate-100">
                             <div>
                                 <div class="font-medium text-slate-700">${e.name}</div>
-                                <div class="text-[10px] uppercase font-bold text-slate-400">${e.type === 'cardio' ? 'Cardio' : 'Muscu'}</div>
+                                <div class="text-[10px] uppercase font-bold text-slate-400">${e.type === 'cardio' ? `Cardio (${e.unit})` : 'Muscu (kg)'}</div>
                             </div>
                             <div class="flex gap-2">
                                 <button onclick="renameExercise('${e.id}')" class="text-slate-400 hover:text-blue-500">✎</button>
@@ -702,18 +709,68 @@
             container.appendChild(exBox);
             app.appendChild(container);
 
+            // Unit visibility logic
+            const typeSelect = document.getElementById('newExType');
+            const unitDiv = document.getElementById('unitSelectorDiv');
+            typeSelect.onchange = () => {
+                if(typeSelect.value === 'cardio') unitDiv.classList.remove('hidden');
+                else unitDiv.classList.add('hidden');
+            };
+
+            // Handlers
             document.getElementById('addUserBtn').onclick = () => {
                 const name = document.getElementById('newUserName').value.trim();
-                if(name) { db.users.push({ id: generateId(), name }); saveDb(); renderSettingsView(); }
+                // Random color for new user
+                const randomColor = '#' + Math.floor(Math.random()*16777215).toString(16);
+                if(name) { db.users.push({ id: generateId(), name, color: randomColor }); saveDb(); renderSettingsView(); }
             };
+
             document.getElementById('addExBtn').onclick = () => {
                 const name = document.getElementById('newExName').value.trim();
                 const type = document.getElementById('newExType').value;
-                if(name) { db.exercises.push({ id: generateId(), name, type }); saveDb(); renderSettingsView(); }
+                let unit = 'kg';
+                if(type === 'cardio') {
+                    unit = document.querySelector('input[name="newExUnit"]:checked').value;
+                }
+                if(name) { db.exercises.push({ id: generateId(), name, type, unit }); saveDb(); renderSettingsView(); }
             };
 
+            // Export Logic
+            document.getElementById('exportBtn').onclick = () => {
+                const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(db));
+                const downloadAnchorNode = document.createElement('a');
+                downloadAnchorNode.setAttribute("href", dataStr);
+                downloadAnchorNode.setAttribute("download", "plo_backup_" + getTodayISO() + ".json");
+                document.body.appendChild(downloadAnchorNode);
+                downloadAnchorNode.click();
+                downloadAnchorNode.remove();
+            };
+
+            // Import Logic
+            document.getElementById('importFile').onchange = (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    try {
+                        const importedDb = JSON.parse(event.target.result);
+                        if(confirm("Cela va remplacer les données actuelles. Continuer ?")) {
+                            db = importedDb;
+                            saveDb();
+                            alert("Données restaurées avec succès !");
+                            renderSettingsView();
+                        }
+                    } catch(err) { alert("Fichier invalide"); }
+                };
+                reader.readAsText(file);
+            };
+
+            window.updateUserColor = (id, color) => {
+                const u = db.users.find(u => u.id === id);
+                if(u) { u.color = color; saveDb(); }
+            };
             window.deleteUser = (id) => {
-                if(confirm("Supprimer l'athlète et TOUT son historique ?")) {
+                if(confirm("Supprimer l'athlète et son historique ?")) {
                     db.users = db.users.filter(u => u.id !== id);
                     db.logs = db.logs.filter(l => l.userId !== id);
                     saveDb(); renderSettingsView();
@@ -725,7 +782,7 @@
                 if(newName && newName !== u.name) { u.name = newName; saveDb(); renderSettingsView(); }
             };
             window.deleteExercise = (id) => {
-                if(confirm("Supprimer l'exercice et TOUT son historique ?")) {
+                if(confirm("Supprimer l'exercice ?")) {
                     db.exercises = db.exercises.filter(e => e.id !== id);
                     db.logs = db.logs.filter(l => l.exId !== id);
                     saveDb(); renderSettingsView();
