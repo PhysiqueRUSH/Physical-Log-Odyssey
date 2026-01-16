@@ -76,8 +76,6 @@
         let db = JSON.parse(localStorage.getItem(DB_KEY)) || { users: [], exercises: [], logs: [] };
 
         // MIGRATION SCRIPT (Pour compatibilité)
-        // Ajoute des couleurs par défaut si elles manquent
-        // Ajoute des unités par défaut si elles manquent
         const DEFAULT_COLORS = ['#e6194b', '#3cb44b', '#ffe119', '#4363d8', '#f58231', '#911eb4', '#46f0f0', '#f032e6'];
         db.users.forEach((u, i) => {
             if(!u.color) u.color = DEFAULT_COLORS[i % DEFAULT_COLORS.length];
@@ -105,13 +103,28 @@
 
         const getTodayISO = () => new Date().toISOString().split('T')[0];
 
+        // --- STYLES DE LIGNES POUR CHEVAUCHEMENT ---
+        // Permet de distinguer les lignes superposées grâce aux pointillés
+        const getLineStyle = (index) => {
+            const styles = [
+                [],             // Ligne continue
+                [5, 5],         // Tirets
+                [2, 2],         // Pointillés fins
+                [10, 5],        // Tirets longs
+                [10, 5, 2, 5],  // Tiret - Point - Tiret
+                [20, 5],        // Très longs tirets
+                [2, 10]         // Points espacés
+            ];
+            return styles[index % styles.length];
+        };
+
         // --- ROUTING ---
         const app = document.getElementById('app');
         let currentChart = null; 
         
         let statState = {
             mode: 'compare', 
-            scaleZero: false,
+            scaleZero: false, // false = Zoom actif par défaut (ChartJS beginAtZero: false)
             selectedId: null, 
             athleteViewType: 'strength'
         };
@@ -140,7 +153,7 @@
             else if (route === 'settings') renderSettingsView();
         }
 
-        // --- SHARED FORM BUILDER (For Log View & Modal) ---
+        // --- SHARED FORM BUILDER ---
         function buildForm(container, logId = null, onSuccess) {
             let logToEdit = logId ? db.logs.find(l => l.id === logId) : null;
             const today = getTodayISO();
@@ -187,7 +200,6 @@
                 </div>
             `;
 
-            // Function exposed to window so the inline onchange works
             window.updateFormInputs = (exId) => {
                 const ex = db.exercises.find(e => e.id === exId);
                 const div = document.getElementById('dynamicInputs');
@@ -209,7 +221,6 @@
                             </div>
                         </div>`;
                     
-                    // Live RM Calc
                     const calc = () => {
                         const w = parseFloat(document.getElementById('inputVal1').value);
                         const r = parseFloat(document.getElementById('inputVal2').value);
@@ -217,7 +228,7 @@
                     };
                     document.getElementById('inputVal1').addEventListener('input', calc);
                     document.getElementById('inputVal2').addEventListener('input', calc);
-                    calc(); // Init
+                    calc(); 
                 } else {
                     rmP.classList.add('hidden');
                     div.innerHTML = `
@@ -228,7 +239,6 @@
                 }
             };
 
-            // Init form
             const initialExId = logToEdit ? logToEdit.exId : document.getElementById('inputEx').value;
             window.updateFormInputs(initialExId);
 
@@ -255,7 +265,7 @@
                     newLog.rm1 = calculate1RM(v1, v2);
                 } else {
                     if(!v1 && v1 !== 0) return alert("Donnée incomplète");
-                    newLog.distance = v1; // We store cardio value in 'distance' property for legacy compatibility, even if unit is different
+                    newLog.distance = v1; 
                 }
 
                 if(logToEdit) {
@@ -280,13 +290,12 @@
             buildForm(container, null, () => router('history'));
         }
 
-        // --- 2. HISTORY VIEW (Advanced Filters & Modal Edit) ---
+        // --- 2. HISTORY VIEW ---
         function renderHistoryView() {
             const container = document.createElement('div');
             container.className = "max-w-lg mx-auto pb-6";
             container.innerHTML = `
                 <h2 class="text-2xl font-bold text-slate-800 mb-4 sticky top-0 bg-slate-50 z-10 py-2">Historique</h2>
-                
                 <div class="bg-white p-3 rounded-xl shadow-sm border border-slate-100 mb-4 grid grid-cols-2 gap-2">
                     <input type="date" id="filterDate" class="w-full text-sm p-1.5 bg-slate-50 border-none rounded">
                     <select id="filterUser" class="w-full text-sm p-1.5 bg-slate-50 border-none rounded">
@@ -299,7 +308,6 @@
                     </select>
                     <button id="clearFilters" class="col-span-2 text-xs text-blue-600 font-bold py-2 hidden">Effacer les filtres</button>
                 </div>
-                
                 <div id="logsList" class="space-y-3"></div>
             `;
             app.appendChild(container);
@@ -320,22 +328,18 @@
                     const user = db.users.find(u => u.id === log.userId) || { name: '?', color: '#ccc' };
                     const ex = db.exercises.find(e => e.id === log.exId);
                     
-                    let content, badge;
+                    let content;
                     if(ex && ex.type === 'strength') {
                         content = `<span class="font-bold text-slate-800">${log.weight}kg</span> <span class="text-slate-500 text-sm">x${log.reps}</span>`;
                         if(log.rm1) content += ` <span class="text-xs text-blue-600 font-bold">(RM:${log.rm1})</span>`;
-                        badge = 'bg-blue-100 text-blue-700';
                     } else if(ex) {
                         content = `<span class="font-bold text-slate-800">${log.distance} ${ex.unit}</span>`;
-                        badge = 'bg-green-100 text-green-700';
                     } else {
                         content = 'Donnée orpheline';
-                        badge = 'bg-gray-100 text-gray-500';
                     }
 
                     const card = document.createElement('div');
                     card.className = "bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex justify-between items-center";
-                    // Petit rond de couleur pour l'athlète
                     card.innerHTML = `
                         <div class="flex-1">
                             <div class="flex items-center gap-2 mb-1">
@@ -386,7 +390,7 @@
         window.showEditModal = (id) => {
             buildForm(modalContent, id, () => {
                 closeModal();
-                router('history'); // Refresh list
+                router('history'); 
             });
             modalContainer.classList.remove('hidden');
         };
@@ -398,8 +402,12 @@
 
         window.deleteLog = (id) => { if(confirm("Supprimer ?")) { db.logs = db.logs.filter(l => l.id !== id); saveDb(); router('history'); }};
 
-        // --- 3. STATS VIEW (Chart Logic Fixed) ---
+        // --- 3. STATS VIEW (Corrected Logic) ---
         function renderStatsView() {
+            // NETTOYAGE CRITIQUE : on vide l'app pour éviter la duplication des éléments
+            app.innerHTML = '';
+            if(currentChart) { currentChart.destroy(); currentChart = null; }
+
             const container = document.createElement('div');
             container.className = "max-w-lg mx-auto flex flex-col h-full";
             
@@ -420,7 +428,7 @@
                     <div class="flex items-center justify-between border-t border-slate-100 pt-3">
                         <span class="text-xs font-semibold text-slate-400 uppercase">Échelle Y</span>
                         <div class="flex items-center cursor-pointer" onclick="document.getElementById('scaleToggle').click()">
-                            <span class="mr-2 text-xs font-bold text-slate-600" id="scaleLabel">${statState.scaleZero ? '0' : 'Zoom'}</span>
+                            <span class="mr-2 text-xs font-bold text-slate-600" id="scaleLabel">${statState.scaleZero ? '0 (Fixe)' : 'Zoom (Auto)'}</span>
                             <div class="relative inline-block w-10 align-middle select-none">
                                 <input type="checkbox" id="scaleToggle" class="toggle-checkbox absolute block w-5 h-5 rounded-full bg-white border-4 appearance-none cursor-pointer border-slate-300" ${statState.scaleZero ? 'checked' : ''}/>
                                 <label for="scaleToggle" class="toggle-label block overflow-hidden h-5 rounded-full bg-slate-300 cursor-pointer"></label>
@@ -435,26 +443,18 @@
             `;
             app.appendChild(container);
 
-            // Tab Handlers
             document.getElementById('tabCompare').onclick = () => { statState.mode = 'compare'; statState.selectedId = null; renderStatsView(); };
             document.getElementById('tabAthlete').onclick = () => { statState.mode = 'athlete'; statState.selectedId = null; renderStatsView(); };
 
-            // Fullscreen Logic
             window.toggleFullscreen = () => {
                 const elem = document.getElementById("chartWrapper");
-                if (!document.fullscreenElement) {
-                    elem.requestFullscreen().catch(err => {
-                        alert(`Erreur: ${err.message}`);
-                    });
-                } else {
-                    document.exitFullscreen();
-                }
+                if (!document.fullscreenElement) elem.requestFullscreen().catch(err => alert(`Erreur: ${err.message}`));
+                else document.exitFullscreen();
             };
 
             const selectionArea = document.getElementById('selectionArea');
             const selectId = 'statSelect';
 
-            // Filter UI Helper
             const createFilterUI = () => {
                 if (statState.mode === 'compare') {
                     const defaultEx = db.exercises.length > 0 ? db.exercises[0].id : '';
@@ -493,16 +493,12 @@
                 const datasets = [];
                 let allLabels = new Set();
                 let yAxisLabel = "";
-
                 const todayISO = getTodayISO();
 
-                // Helper to add projection point
                 const addProjection = (dataPoints) => {
                     if(dataPoints.length > 0) {
                         const lastPt = dataPoints[dataPoints.length - 1];
                         if(lastPt.x !== formatDate(todayISO)) {
-                            // On ajoute un point "Aujourd'hui" avec la même valeur
-                            // Mais on lui donnera un radius de 0 dans le dataset pour qu'il soit invisible (juste le trait)
                             dataPoints.push({ x: formatDate(todayISO), y: lastPt.y, isProjection: true });
                         }
                     }
@@ -514,20 +510,12 @@
                     const ex = db.exercises.find(e => e.id === exId);
                     yAxisLabel = `${ex.name} (${ex.unit || 'val'})`;
                     
-                    db.users.forEach(user => {
-                        const logs = db.logs
-                            .filter(l => l.userId === user.id && l.exId === exId)
-                            .sort((a,b) => new Date(a.date) - new Date(b.date));
-                        
+                    db.users.forEach((user, idx) => {
+                        const logs = db.logs.filter(l => l.userId === user.id && l.exId === exId).sort((a,b) => new Date(a.date) - new Date(b.date));
                         const validLogs = logs.filter(l => (ex.type === 'strength' ? l.rm1 > 0 : l.distance > 0));
 
                         if(validLogs.length > 0) {
-                            let dataPoints = validLogs.map(l => ({
-                                x: formatDate(l.date), 
-                                y: ex.type === 'strength' ? l.rm1 : l.distance
-                            }));
-                            
-                            // Projection Logic
+                            let dataPoints = validLogs.map(l => ({ x: formatDate(l.date), y: ex.type === 'strength' ? l.rm1 : l.distance }));
                             dataPoints = addProjection(dataPoints);
                             dataPoints.forEach(p => allLabels.add(p.x));
 
@@ -536,10 +524,11 @@
                                 data: dataPoints,
                                 borderColor: user.color,
                                 backgroundColor: user.color,
-                                tension: 0, // Lignes droites
-                                pointRadius: (ctx) => ctx.raw.isProjection ? 0 : 4, // Pas de point si projection
+                                tension: 0,
+                                // LOGIQUE HACHUREE : Chaque index a un pattern différent
+                                borderDash: getLineStyle(idx),
+                                pointRadius: (ctx) => ctx.raw.isProjection ? 0 : 4,
                                 pointHoverRadius: (ctx) => ctx.raw.isProjection ? 0 : 7,
-                                borderDash: []
                             });
                         }
                     });
@@ -549,19 +538,13 @@
                     yAxisLabel = targetType === 'strength' ? 'Poids (kg)' : 'Distance / Répétitions';
 
                     db.exercises.filter(e => e.type === targetType).forEach((ex, idx) => {
-                         // Default color palette for exercises since exercises don't have user colors
                         const colors = ['#e6194b', '#3cb44b', '#ffe119', '#4363d8', '#f58231'];
                         const color = colors[idx % colors.length];
-
                         const logs = db.logs.filter(l => l.userId === userId && l.exId === ex.id).sort((a,b) => new Date(a.date) - new Date(b.date));
                         const validLogs = logs.filter(l => (targetType === 'strength' ? l.rm1 > 0 : l.distance > 0));
 
                         if(validLogs.length > 0) {
-                            let dataPoints = validLogs.map(l => ({
-                                x: formatDate(l.date), 
-                                y: targetType === 'strength' ? l.rm1 : l.distance
-                            }));
-
+                            let dataPoints = validLogs.map(l => ({ x: formatDate(l.date), y: targetType === 'strength' ? l.rm1 : l.distance }));
                             dataPoints = addProjection(dataPoints);
                             dataPoints.forEach(p => allLabels.add(p.x));
 
@@ -571,6 +554,7 @@
                                 borderColor: color,
                                 backgroundColor: color,
                                 tension: 0,
+                                borderDash: getLineStyle(idx),
                                 pointRadius: (ctx) => ctx.raw.isProjection ? 0 : 4,
                                 pointHoverRadius: (ctx) => ctx.raw.isProjection ? 0 : 7,
                             });
@@ -578,13 +562,7 @@
                     });
                 }
 
-                // Sort dates specifically for Chart.js
-                // Note: formatDate returns "dd/mm/yyyy", we need to parse back to sort correctly
-                const parseFrDate = (str) => {
-                    const [d, m, y] = str.split('/');
-                    return new Date(`${y}-${m}-${d}`);
-                };
-                
+                const parseFrDate = (str) => { const [d, m, y] = str.split('/'); return new Date(`${y}-${m}-${d}`); };
                 const sortedLabels = Array.from(allLabels).sort((a,b) => parseFrDate(a) - parseFrDate(b));
 
                 if(currentChart) currentChart.destroy();
@@ -597,17 +575,17 @@
                         maintainAspectRatio: false,
                         interaction: { mode: 'nearest', intersect: false },
                         plugins: {
-                            legend: { display: true, position: 'bottom', labels: { boxWidth: 12, usePointStyle: true } },
-                            tooltip: { 
-                                callbacks: { 
-                                    title: (c) => c[0].label,
-                                    label: (c) => c.raw.isProjection ? `${c.dataset.label}: (Projection)` : `${c.dataset.label}: ${c.formattedValue}`
-                                } 
-                            }
+                            legend: { display: true, position: 'bottom', labels: { boxWidth: 20, usePointStyle: false } },
+                            tooltip: { callbacks: { label: (c) => c.raw.isProjection ? `${c.dataset.label}: (Projection)` : `${c.dataset.label}: ${c.formattedValue}` } }
                         },
                         scales: {
                             x: { grid: { display: false } },
-                            y: { beginAtZero: statState.scaleZero, title: { display: true, text: yAxisLabel } }
+                            y: { 
+                                // SI scaleZero est TRUE => beginAtZero TRUE (Graphique inclut 0)
+                                // SI scaleZero est FALSE => beginAtZero FALSE (Graphique zoome sur les données)
+                                beginAtZero: statState.scaleZero, 
+                                title: { display: true, text: yAxisLabel } 
+                            }
                         }
                     }
                 });
@@ -618,25 +596,24 @@
             
             document.getElementById('scaleToggle').addEventListener('change', (e) => {
                 statState.scaleZero = e.target.checked;
-                document.getElementById('scaleLabel').innerText = statState.scaleZero ? '0' : 'Zoom';
+                document.getElementById('scaleLabel').innerText = statState.scaleZero ? '0 (Fixe)' : 'Zoom (Auto)';
                 updateChart();
             });
 
             updateChart();
         }
 
-        // --- 5. SETTINGS VIEW (Color Picker, Export/Import, Units) ---
+        // --- 5. SETTINGS VIEW ---
         function renderSettingsView() {
             const container = document.createElement('div');
             container.className = "max-w-lg mx-auto space-y-6 pb-8";
             container.innerHTML = `<h2 class="text-2xl font-bold text-slate-800 mb-2">Gestion</h2>`;
 
-            // DATA BACKUP
             const backupBox = document.createElement('div');
             backupBox.className = "bg-white p-5 rounded-xl shadow-sm border border-slate-100";
             backupBox.innerHTML = `
                 <h3 class="font-bold text-slate-700 mb-2">Sauvegarde des données</h3>
-                <p class="text-xs text-slate-500 mb-3">Exportez vos données en fichier JSON pour les sauvegarder sur votre Google Drive ou ailleurs.</p>
+                <p class="text-xs text-slate-500 mb-3">Exportez vos données en fichier JSON.</p>
                 <div class="flex gap-2">
                     <button id="exportBtn" class="bg-blue-100 text-blue-700 px-3 py-2 rounded-lg text-sm font-bold flex-1">⬇ Exporter</button>
                     <button onclick="document.getElementById('importFile').click()" class="bg-slate-100 text-slate-700 px-3 py-2 rounded-lg text-sm font-bold flex-1">⬆ Restaurer</button>
@@ -645,7 +622,6 @@
             `;
             container.appendChild(backupBox);
 
-            // USERS
             const userBox = document.createElement('div');
             userBox.className = "bg-white p-5 rounded-xl shadow-sm border border-slate-100";
             userBox.innerHTML = `
@@ -670,7 +646,6 @@
                 </ul>`;
             container.appendChild(userBox);
 
-            // EXERCISES
             const exBox = document.createElement('div');
             exBox.className = "bg-white p-5 rounded-xl shadow-sm border border-slate-100";
             exBox.innerHTML = `
@@ -709,7 +684,6 @@
             container.appendChild(exBox);
             app.appendChild(container);
 
-            // Unit visibility logic
             const typeSelect = document.getElementById('newExType');
             const unitDiv = document.getElementById('unitSelectorDiv');
             typeSelect.onchange = () => {
@@ -717,10 +691,8 @@
                 else unitDiv.classList.add('hidden');
             };
 
-            // Handlers
             document.getElementById('addUserBtn').onclick = () => {
                 const name = document.getElementById('newUserName').value.trim();
-                // Random color for new user
                 const randomColor = '#' + Math.floor(Math.random()*16777215).toString(16);
                 if(name) { db.users.push({ id: generateId(), name, color: randomColor }); saveDb(); renderSettingsView(); }
             };
@@ -735,7 +707,6 @@
                 if(name) { db.exercises.push({ id: generateId(), name, type, unit }); saveDb(); renderSettingsView(); }
             };
 
-            // Export Logic
             document.getElementById('exportBtn').onclick = () => {
                 const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(db));
                 const downloadAnchorNode = document.createElement('a');
@@ -746,7 +717,6 @@
                 downloadAnchorNode.remove();
             };
 
-            // Import Logic
             document.getElementById('importFile').onchange = (e) => {
                 const file = e.target.files[0];
                 if (!file) return;
@@ -757,7 +727,7 @@
                         if(confirm("Cela va remplacer les données actuelles. Continuer ?")) {
                             db = importedDb;
                             saveDb();
-                            alert("Données restaurées avec succès !");
+                            alert("Données restaurées !");
                             renderSettingsView();
                         }
                     } catch(err) { alert("Fichier invalide"); }
@@ -765,34 +735,11 @@
                 reader.readAsText(file);
             };
 
-            window.updateUserColor = (id, color) => {
-                const u = db.users.find(u => u.id === id);
-                if(u) { u.color = color; saveDb(); }
-            };
-            window.deleteUser = (id) => {
-                if(confirm("Supprimer l'athlète et son historique ?")) {
-                    db.users = db.users.filter(u => u.id !== id);
-                    db.logs = db.logs.filter(l => l.userId !== id);
-                    saveDb(); renderSettingsView();
-                }
-            };
-            window.renameUser = (id) => {
-                const u = db.users.find(u => u.id === id);
-                const newName = prompt("Nouveau nom :", u.name);
-                if(newName && newName !== u.name) { u.name = newName; saveDb(); renderSettingsView(); }
-            };
-            window.deleteExercise = (id) => {
-                if(confirm("Supprimer l'exercice ?")) {
-                    db.exercises = db.exercises.filter(e => e.id !== id);
-                    db.logs = db.logs.filter(l => l.exId !== id);
-                    saveDb(); renderSettingsView();
-                }
-            };
-            window.renameExercise = (id) => {
-                const e = db.exercises.find(e => e.id === id);
-                const newName = prompt("Nouveau nom :", e.name);
-                if(newName && newName !== e.name) { e.name = newName; saveDb(); renderSettingsView(); }
-            };
+            window.updateUserColor = (id, color) => { const u = db.users.find(u => u.id === id); if(u) { u.color = color; saveDb(); } };
+            window.deleteUser = (id) => { if(confirm("Supprimer l'athlète et son historique ?")) { db.users = db.users.filter(u => u.id !== id); db.logs = db.logs.filter(l => l.userId !== id); saveDb(); renderSettingsView(); } };
+            window.renameUser = (id) => { const u = db.users.find(u => u.id === id); const newName = prompt("Nouveau nom :", u.name); if(newName && newName !== u.name) { u.name = newName; saveDb(); renderSettingsView(); } };
+            window.deleteExercise = (id) => { if(confirm("Supprimer l'exercice ?")) { db.exercises = db.exercises.filter(e => e.id !== id); db.logs = db.logs.filter(l => l.exId !== id); saveDb(); renderSettingsView(); } };
+            window.renameExercise = (id) => { const e = db.exercises.find(e => e.id === id); const newName = prompt("Nouveau nom :", e.name); if(newName && newName !== e.name) { e.name = newName; saveDb(); renderSettingsView(); } };
         }
 
         // --- INIT ---
