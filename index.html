@@ -6,170 +6,239 @@
     <title>Physical Log Odyssey</title>
     <link rel="icon" type="image/png" href="./plo-ico.png">
     <link rel="manifest" href="manifest.json">
+    
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
     <style>
+        /* --- ESTHETIQUE & ERGONOMIE (VOTRE DESIGN V8) --- */
         body { -webkit-tap-highlight-color: transparent; }
         .hidden { display: none !important; }
         .fade-in { animation: fadeIn 0.2s ease-in-out; }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         
-        /* Tabs */
+        /* Onglets */
         .tab-active { border-bottom: 2px solid #2563eb; color: #2563eb; font-weight: bold; }
         .tab-inactive { color: #64748b; }
 
-        /* Scrollbar */
+        /* Scrollbar fine */
         .custom-scrollbar::-webkit-scrollbar { width: 4px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
 
-        /* Modal Backdrop */
+        /* Fond Modale */
         .modal-backdrop { background-color: rgba(0, 0, 0, 0.5); backdrop-filter: blur(2px); }
 
-        /* Switch Toggle Fixe et Fiable */
-        .switch {
-            position: relative;
-            display: inline-block;
-            width: 44px;
-            height: 24px;
-        }
-        .switch input { 
-            opacity: 0;
-            width: 0;
-            height: 0;
-        }
-        .slider {
-            position: absolute;
-            cursor: pointer;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background-color: #cbd5e1;
-            transition: .4s;
-            border-radius: 34px;
-        }
-        .slider:before {
-            position: absolute;
-            content: "";
-            height: 18px;
-            width: 18px;
-            left: 3px;
-            bottom: 3px;
-            background-color: white;
-            transition: .4s;
-            border-radius: 50%;
-        }
-        input:checked + .slider {
-            background-color: #2563eb;
-        }
-        input:checked + .slider:before {
-            transform: translateX(20px);
-        }
+        /* Switch Toggle (Le Vrai, celui qui marche) */
+        .switch { position: relative; display: inline-block; width: 44px; height: 24px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #cbd5e1; transition: .4s; border-radius: 34px; }
+        .slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; box-shadow: 0 1px 2px rgba(0,0,0,0.2); }
+        input:checked + .slider { background-color: #2563eb; }
+        input:checked + .slider:before { transform: translateX(20px); }
+
+        /* Loader de Sync Cloud */
+        .loader { border: 3px solid rgba(255,255,255,0.3); border-top: 3px solid #ffffff; border-radius: 50%; width: 14px; height: 14px; animation: spin 1s linear infinite; }
+        .loader-big { border: 4px solid #e2e8f0; border-top: 4px solid #3b82f6; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-800 h-screen flex flex-col font-sans">
 
-    <header class="bg-blue-600 text-white p-4 shadow-md z-10 flex justify-between items-center transition-colors">
-        <h1 class="text-xl font-bold tracking-wide">Physical Log Odyssey</h1>
+    <header class="bg-blue-600 text-white p-4 shadow-md z-10 flex justify-between items-center relative transition-colors duration-300" id="mainHeader">
+        <div class="flex items-center gap-3">
+            <h1 class="text-xl font-bold tracking-wide">Physical Log Odyssey</h1>
+            <div id="syncStatus" class="hidden flex items-center gap-2 bg-blue-700 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider shadow-inner">
+                <div class="loader"></div> <span class="opacity-90">Cloud</span>
+            </div>
+        </div>
         <img src="./plo-ico.png" alt="Logo" class="w-8 h-8 rounded bg-white p-0.5 shadow-sm">
+        
+        <div id="visitorBadge" class="hidden absolute top-14 left-1/2 transform -translate-x-1/2 bg-orange-500 text-white text-[10px] font-bold px-3 py-1 rounded-full shadow-lg border border-orange-400 z-50">
+            LECTURE SEULE
+        </div>
     </header>
 
     <main id="app" class="flex-1 overflow-y-auto p-4 pb-24 relative">
-        </main>
+        <div class="flex flex-col items-center justify-center h-full text-slate-400 gap-4">
+            <div class="loader-big"></div>
+            <p class="font-medium animate-pulse">Connexion Google Sheets...</p>
+        </div>
+    </main>
 
-    <div id="modalContainer" class="fixed inset-0 z-50 hidden flex items-center justify-center modal-backdrop p-4">
+    <div id="modalContainer" class="fixed inset-0 z-50 hidden flex items-center justify-center modal-backdrop p-4 fade-in">
         <div class="bg-white w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
             <div class="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
                 <h3 class="font-bold text-lg text-slate-800">Édition Rapide</h3>
-                <button onclick="closeModal()" class="text-slate-400 hover:text-slate-600 text-2xl leading-none">&times;</button>
+                <button onclick="closeModal()" class="text-slate-400 hover:text-slate-600 text-3xl leading-none">&times;</button>
             </div>
             <div id="modalContent" class="p-4 overflow-y-auto custom-scrollbar"></div>
         </div>
     </div>
 
-    <nav class="fixed bottom-0 w-full bg-white border-t border-slate-200 flex justify-around p-3 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] z-20 pb-safe">
-        <button onclick="router('log')" class="nav-btn flex flex-col items-center text-slate-400 hover:text-blue-600 transition" id="nav-log">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
-            <span class="text-[10px] mt-1 font-medium">Saisie</span>
-        </button>
-        <button onclick="router('history')" class="nav-btn flex flex-col items-center text-slate-400 hover:text-blue-600 transition" id="nav-history">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-            <span class="text-[10px] mt-1 font-medium">Historique</span>
-        </button>
-        <button onclick="router('stats')" class="nav-btn flex flex-col items-center text-slate-400 hover:text-blue-600 transition" id="nav-stats">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"></path></svg>
-            <span class="text-[10px] mt-1 font-medium">Graphiques</span>
-        </button>
-        <button onclick="router('settings')" class="nav-btn flex flex-col items-center text-slate-400 hover:text-blue-600 transition" id="nav-settings">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
-            <span class="text-[10px] mt-1 font-medium">Gestion</span>
-        </button>
-    </nav>
+    <nav id="navbar" class="fixed bottom-0 w-full bg-white border-t border-slate-200 flex justify-around p-3 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] z-20 pb-safe">
+        </nav>
 
     <script>
-        // --- DATA LAYER ---
-        const DB_KEY = 'physical_log_odyssey_v1';
-        let db = JSON.parse(localStorage.getItem(DB_KEY)) || { users: [], exercises: [], logs: [] };
-
-        // MIGRATION SCRIPT (Compatibilité)
-        const DEFAULT_COLORS = ['#e6194b', '#3cb44b', '#ffe119', '#4363d8', '#f58231', '#911eb4', '#46f0f0', '#f032e6'];
-        db.users.forEach((u, i) => { if(!u.color) u.color = DEFAULT_COLORS[i % DEFAULT_COLORS.length]; });
-        db.exercises.forEach(e => {
-            if(!e.unit && e.type === 'cardio') e.unit = 'km';
-            if(!e.unit && e.type === 'strength') e.unit = 'kg';
-        });
-        const saveDb = () => localStorage.setItem(DB_KEY, JSON.stringify(db));
-
-        // --- UTILS ---
-        const generateId = () => Date.now().toString(36) + Math.random().toString(36).substr(2);
+        // ==========================================
+        // 1. CONFIGURATION (CLOUD & SECU)
+        // ==========================================
         
-        const calculate1RM = (weight, reps) => {
-            if(!weight || !reps) return 0;
-            if(reps === 1) return weight;
-            return Math.round((weight * (1 + reps / 30)) * 10) / 10;
+        // VOTRE LIEN GOOGLE SHEETS
+        const API_URL = "https://script.google.com/macros/s/AKfycbxrSB2TgDnk2f6jAxVan0j2Jz014rb1Rb8VT4H-9g8tusWfCdob04cL2a9qa6ifsfYG/exec";
+        const LOCAL_KEY = 'physical_log_odyssey_v1';
+        
+        // SECURITE : ?admin=1234 pour modifier
+        const urlParams = new URLSearchParams(window.location.search);
+        const isAdmin = urlParams.get('admin') === '1234'; 
+
+        let db = { users: [], exercises: [], logs: [] };
+        
+        // --- GESTION SYNCHRONISATION ---
+        const setSyncUI = (active) => {
+            const el = document.getElementById('syncStatus');
+            if(active) el.classList.remove('hidden'); else el.classList.add('hidden');
         };
 
-        const formatDate = (dateStr) => {
-            const d = new Date(dateStr);
-            return d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' });
+        const loadData = async () => {
+            setSyncUI(true);
+            try {
+                // Tentative Cloud
+                const response = await fetch(API_URL);
+                const cloudData = await response.json();
+                
+                if (cloudData && (cloudData.users || cloudData.exercises)) {
+                    db = cloudData;
+                    normalizeData(db);
+                    localStorage.setItem(LOCAL_KEY, JSON.stringify(db)); // Mise à jour cache local
+                } else {
+                    // Si Cloud vide (premier lancement), on prend le local
+                    const local = JSON.parse(localStorage.getItem(LOCAL_KEY));
+                    if(local) db = local;
+                }
+                router(isAdmin ? 'log' : 'stats');
+            } catch (err) {
+                console.warn("Mode Hors Ligne activé (Erreur Cloud)", err);
+                // Fallback Local
+                const local = JSON.parse(localStorage.getItem(LOCAL_KEY));
+                if(local) { db = local; normalizeData(db); }
+                router(isAdmin ? 'log' : 'stats');
+            } finally {
+                setSyncUI(false);
+            }
         };
 
+        const saveData = async () => {
+            if(!isAdmin) return; 
+            localStorage.setItem(LOCAL_KEY, JSON.stringify(db)); // Sauvegarde locale immédiate
+            setSyncUI(true);
+            try {
+                // Envoi Cloud
+                await fetch(API_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(db)
+                });
+            } catch (err) { console.error("Erreur Cloud", err); } 
+            finally { setSyncUI(false); }
+        };
+
+        const normalizeData = (database) => {
+            const DEFAULT_COLORS = ['#e6194b', '#3cb44b', '#ffe119', '#4363d8', '#f58231', '#911eb4', '#46f0f0', '#f032e6'];
+            if(!database.users) database.users = [];
+            if(!database.exercises) database.exercises = [];
+            if(!database.logs) database.logs = [];
+            database.users.forEach((u, i) => { if(!u.color) u.color = DEFAULT_COLORS[i % DEFAULT_COLORS.length]; });
+            database.exercises.forEach(e => {
+                if(!e.unit && e.type === 'cardio') e.unit = 'km';
+                if(!e.unit && e.type === 'strength') e.unit = 'kg';
+            });
+        };
+
+        const migrateLocalToCloud = async () => {
+            if(!isAdmin) return;
+            const local = localStorage.getItem(LOCAL_KEY);
+            if (!local) return alert("Rien à migrer.");
+            if(confirm("ATTENTION : Cela va écraser les données du Google Sheet par celles de ce téléphone. Confirmer ?")) {
+                db = JSON.parse(local);
+                normalizeData(db);
+                await saveData();
+                alert("Données envoyées au Cloud avec succès.");
+                location.reload();
+            }
+        };
+
+        // ==========================================
+        // 2. UTILS
+        // ==========================================
+        const generateId = () => Date.now().toString(36) + Math.random().toString(36).substr(2);
+        const calculate1RM = (w, r) => (!w || !r) ? 0 : (r === 1 ? w : Math.round((w * (1 + r / 30)) * 10) / 10);
+        const formatDate = (dateStr) => { const d = new Date(dateStr); return d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' }); };
         const getTodayISO = () => new Date().toISOString().split('T')[0];
 
-        // --- ROUTING ---
+        // ==========================================
+        // 3. NAVIGATION & ROUTEUR
+        // ==========================================
         const app = document.getElementById('app');
+        const nav = document.getElementById('navbar');
         let currentChart = null; 
-        
-        let statState = {
-            mode: 'compare', 
-            scaleZero: false,
-            selectedId: null, 
-            athleteViewType: 'strength'
+        let statState = { mode: 'compare', scaleZero: false, selectedId: null, athleteViewType: 'strength' };
+
+        const renderNav = () => {
+            if (!isAdmin) {
+                // VISITEUR
+                document.getElementById('visitorBadge').classList.remove('hidden');
+                document.getElementById('mainHeader').classList.replace('bg-blue-600', 'bg-slate-700');
+                nav.innerHTML = `
+                    <button onclick="router('stats')" class="nav-btn flex flex-col items-center text-slate-400 hover:text-blue-600 transition" id="nav-stats"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"></path></svg><span class="text-[10px] mt-1 font-medium">Graphiques</span></button>
+                    <button onclick="router('history')" class="nav-btn flex flex-col items-center text-slate-400 hover:text-blue-600 transition" id="nav-history"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg><span class="text-[10px] mt-1 font-medium">Historique</span></button>
+                `;
+            } else {
+                // ADMIN
+                document.getElementById('visitorBadge').classList.add('hidden');
+                nav.innerHTML = `
+                    <button onclick="router('log')" class="nav-btn flex flex-col items-center text-slate-400 hover:text-blue-600 transition" id="nav-log"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg><span class="text-[10px] mt-1 font-medium">Saisie</span></button>
+                    <button onclick="router('history')" class="nav-btn flex flex-col items-center text-slate-400 hover:text-blue-600 transition" id="nav-history"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg><span class="text-[10px] mt-1 font-medium">Historique</span></button>
+                    <button onclick="router('stats')" class="nav-btn flex flex-col items-center text-slate-400 hover:text-blue-600 transition" id="nav-stats"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"></path></svg><span class="text-[10px] mt-1 font-medium">Graphiques</span></button>
+                    <button onclick="router('settings')" class="nav-btn flex flex-col items-center text-slate-400 hover:text-blue-600 transition" id="nav-settings"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg><span class="text-[10px] mt-1 font-medium">Gestion</span></button>
+                `;
+            }
         };
 
         function highlightNav(route) {
-            document.querySelectorAll('.nav-btn').forEach(b => {
-                b.classList.remove('text-blue-600');
-                b.classList.add('text-slate-400');
-            });
+            document.querySelectorAll('.nav-btn').forEach(b => { b.classList.remove('text-blue-600'); b.classList.add('text-slate-400'); });
             const activeBtn = document.getElementById('nav-' + route);
-            if(activeBtn) {
-                activeBtn.classList.remove('text-slate-400');
-                activeBtn.classList.add('text-blue-600');
-            }
+            if(activeBtn) { activeBtn.classList.remove('text-slate-400'); activeBtn.classList.add('text-blue-600'); }
         }
 
         function router(route) {
             if(currentChart) { currentChart.destroy(); currentChart = null; }
             app.innerHTML = '';
             app.className = "flex-1 overflow-y-auto p-4 pb-24 relative fade-in";
-            highlightNav(route);
             
+            if(!isAdmin && (route === 'log' || route === 'settings')) route = 'stats'; // Protection
+
+            highlightNav(route);
             if (route === 'log') renderLogView();
             else if (route === 'history') renderHistoryView();
             else if (route === 'stats') renderStatsView();
             else if (route === 'settings') renderSettingsView();
         }
 
-        // --- SHARED FORM BUILDER ---
+        // ==========================================
+        // 4. VUES (LOG, HISTORY, STATS, SETTINGS)
+        // ==========================================
+
+        // --- 1. SAISIE ---
+        function renderLogView() {
+            if(!isAdmin) return;
+            if(db.users.length === 0 || db.exercises.length === 0) { app.innerHTML = `<div class="text-center p-10 text-slate-500">Créez d'abord des données dans Gestion.</div>`; return; }
+            const container = document.createElement('div'); container.className = "max-w-lg mx-auto";
+            app.appendChild(container);
+            buildForm(container, null, () => router('history'));
+        }
+
         function buildForm(container, logId = null, onSuccess) {
             let logToEdit = logId ? db.logs.find(l => l.id === logId) : null;
             const today = getTodayISO();
@@ -177,605 +246,173 @@
             container.innerHTML = `
                 <div class="space-y-4">
                     <h2 class="text-xl font-bold text-slate-800 mb-2">${logToEdit ? 'Modifier' : 'Nouvelle Performance'}</h2>
-                    
                     <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100 space-y-3">
-                        <div>
-                            <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Date</label>
-                            <input type="date" id="inputDate" value="${logToEdit ? logToEdit.date : today}" class="block w-full rounded-lg bg-slate-50 border-transparent focus:ring-blue-500">
-                        </div>
-                        <div>
-                            <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Athlète</label>
-                            <select id="inputUser" class="block w-full rounded-lg bg-slate-50 border-transparent focus:ring-blue-500 h-10">
-                                ${db.users.map(u => `<option value="${u.id}" ${logToEdit && logToEdit.userId === u.id ? 'selected' : ''}>${u.name}</option>`).join('')}
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Exercice</label>
-                            <select id="inputEx" class="block w-full rounded-lg bg-slate-50 border-transparent focus:ring-blue-500 h-10" onchange="window.updateFormInputs(this.value)">
-                                 ${db.exercises.map(e => `<option value="${e.id}" ${logToEdit && logToEdit.exId === e.id ? 'selected' : ''}>${e.name}</option>`).join('')}
-                            </select>
-                        </div>
+                        <div><label class="block text-xs font-bold text-slate-400 uppercase mb-1">Date</label><input type="date" id="inputDate" value="${logToEdit ? logToEdit.date : today}" class="block w-full rounded-lg bg-slate-50 border-transparent focus:ring-blue-500"></div>
+                        <div><label class="block text-xs font-bold text-slate-400 uppercase mb-1">Athlète</label><select id="inputUser" class="block w-full rounded-lg bg-slate-50 border-transparent focus:ring-blue-500 h-10">${db.users.map(u => `<option value="${u.id}" ${logToEdit && logToEdit.userId === u.id ? 'selected' : ''}>${u.name}</option>`).join('')}</select></div>
+                        <div><label class="block text-xs font-bold text-slate-400 uppercase mb-1">Exercice</label><select id="inputEx" class="block w-full rounded-lg bg-slate-50 border-transparent focus:ring-blue-500 h-10" onchange="window.updateFormInputs(this.value)">${db.exercises.map(e => `<option value="${e.id}" ${logToEdit && logToEdit.exId === e.id ? 'selected' : ''}>${e.name}</option>`).join('')}</select></div>
                     </div>
-
-                    <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100">
-                        <div id="dynamicInputs"></div>
-                        <div id="rmPreview" class="mt-3 pt-3 border-t border-slate-100 text-center hidden">
-                            <span class="text-xs uppercase font-bold text-slate-400">Max Théorique</span>
-                            <div class="text-2xl font-black text-slate-800"><span id="rmValue">--</span> <span class="text-sm text-slate-400">kg</span></div>
-                        </div>
-                    </div>
-
-                    <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100">
-                        <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Commentaire</label>
-                        <textarea id="inputComment" rows="2" class="block w-full rounded-lg bg-slate-50 border-transparent focus:ring-blue-500">${logToEdit ? logToEdit.comment || '' : ''}</textarea>
-                    </div>
-
-                    <button id="saveBtn" class="w-full bg-blue-600 text-white font-bold py-3 rounded-xl shadow-lg hover:bg-blue-700 transition active:scale-95">
-                        ${logToEdit ? 'Mettre à jour' : 'Enregistrer'}
-                    </button>
-                </div>
-            `;
-
+                    <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100"><div id="dynamicInputs"></div><div id="rmPreview" class="mt-3 pt-3 border-t border-slate-100 text-center hidden"><span class="text-xs uppercase font-bold text-slate-400">Max Théorique</span><div class="text-2xl font-black text-slate-800"><span id="rmValue">--</span> <span class="text-sm text-slate-400">kg</span></div></div></div>
+                    <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100"><label class="block text-xs font-bold text-slate-400 uppercase mb-1">Commentaire</label><textarea id="inputComment" rows="2" class="block w-full rounded-lg bg-slate-50 border-transparent focus:ring-blue-500">${logToEdit ? logToEdit.comment || '' : ''}</textarea></div>
+                    <button id="saveBtn" class="w-full bg-blue-600 text-white font-bold py-3 rounded-xl shadow-lg hover:bg-blue-700 transition active:scale-95">${logToEdit ? 'Mettre à jour' : 'Enregistrer'}</button>
+                </div>`;
             window.updateFormInputs = (exId) => {
                 const ex = db.exercises.find(e => e.id === exId);
-                const div = document.getElementById('dynamicInputs');
-                const rmP = document.getElementById('rmPreview');
-                
+                const div = document.getElementById('dynamicInputs'), rmP = document.getElementById('rmPreview');
                 if(!ex) return;
-
                 if(ex.type === 'strength') {
                     rmP.classList.remove('hidden');
-                    div.innerHTML = `
-                        <div class="grid grid-cols-2 gap-4">
-                            <div>
-                                <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Poids (kg)</label>
-                                <input type="number" step="0.5" id="inputVal1" value="${logToEdit ? logToEdit.weight : ''}" class="block w-full text-center text-xl font-bold rounded-lg bg-slate-50 border-transparent text-blue-600" placeholder="0">
-                            </div>
-                            <div>
-                                <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Répétitions</label>
-                                <input type="number" id="inputVal2" value="${logToEdit ? logToEdit.reps : ''}" class="block w-full text-center text-xl font-bold rounded-lg bg-slate-50 border-transparent text-blue-600" placeholder="0">
-                            </div>
-                        </div>`;
-                    
-                    const calc = () => {
-                        const w = parseFloat(document.getElementById('inputVal1').value);
-                        const r = parseFloat(document.getElementById('inputVal2').value);
-                        if(w && r) document.getElementById('rmValue').innerText = calculate1RM(w,r);
-                    };
-                    document.getElementById('inputVal1').addEventListener('input', calc);
-                    document.getElementById('inputVal2').addEventListener('input', calc);
-                    calc(); 
+                    div.innerHTML = `<div class="grid grid-cols-2 gap-4"><div><label class="block text-xs font-bold text-slate-400 uppercase mb-1">Poids (kg)</label><input type="number" step="0.5" id="inputVal1" value="${logToEdit ? logToEdit.weight : ''}" class="block w-full text-center text-xl font-bold rounded-lg bg-slate-50 border-transparent text-blue-600" placeholder="0"></div><div><label class="block text-xs font-bold text-slate-400 uppercase mb-1">Répétitions</label><input type="number" id="inputVal2" value="${logToEdit ? logToEdit.reps : ''}" class="block w-full text-center text-xl font-bold rounded-lg bg-slate-50 border-transparent text-blue-600" placeholder="0"></div></div>`;
+                    const calc = () => { const w = parseFloat(document.getElementById('inputVal1').value), r = parseFloat(document.getElementById('inputVal2').value); if(w && r) document.getElementById('rmValue').innerText = calculate1RM(w,r); };
+                    document.getElementById('inputVal1').addEventListener('input', calc); document.getElementById('inputVal2').addEventListener('input', calc); calc();
                 } else {
                     rmP.classList.add('hidden');
-                    div.innerHTML = `
-                        <div>
-                            <label class="block text-xs font-bold text-slate-400 uppercase mb-1">${ex.unit || 'Performance'}</label>
-                            <input type="number" step="0.01" id="inputVal1" value="${logToEdit ? logToEdit.distance : ''}" class="block w-full text-center text-xl font-bold rounded-lg bg-slate-50 border-transparent text-green-600" placeholder="0">
-                        </div>`;
+                    div.innerHTML = `<div><label class="block text-xs font-bold text-slate-400 uppercase mb-1">${ex.unit || 'Performance'}</label><input type="number" step="0.01" id="inputVal1" value="${logToEdit ? logToEdit.distance : ''}" class="block w-full text-center text-xl font-bold rounded-lg bg-slate-50 border-transparent text-green-600" placeholder="0"></div>`;
                 }
             };
-
-            const initialExId = logToEdit ? logToEdit.exId : document.getElementById('inputEx').value;
-            window.updateFormInputs(initialExId);
-
+            window.updateFormInputs(logToEdit ? logToEdit.exId : document.getElementById('inputEx').value);
             document.getElementById('saveBtn').onclick = () => {
-                const exId = document.getElementById('inputEx').value;
-                const ex = db.exercises.find(e => e.id === exId);
-                
-                const newLog = {
-                    id: logToEdit ? logToEdit.id : generateId(),
-                    date: document.getElementById('inputDate').value,
-                    userId: document.getElementById('inputUser').value,
-                    exId: exId,
-                    comment: document.getElementById('inputComment').value,
-                    timestamp: Date.now()
-                };
-
+                const exId = document.getElementById('inputEx').value, ex = db.exercises.find(e => e.id === exId);
+                const newLog = { id: logToEdit ? logToEdit.id : generateId(), date: document.getElementById('inputDate').value, userId: document.getElementById('inputUser').value, exId: exId, comment: document.getElementById('inputComment').value, timestamp: Date.now() };
                 const v1 = parseFloat(document.getElementById('inputVal1').value);
-
-                if(ex.type === 'strength') {
-                    const v2 = parseFloat(document.getElementById('inputVal2').value);
-                    if(!v1 || !v2) return alert("Données incomplètes");
-                    newLog.weight = v1;
-                    newLog.reps = v2;
-                    newLog.rm1 = calculate1RM(v1, v2);
-                } else {
-                    if(!v1 && v1 !== 0) return alert("Donnée incomplète");
-                    newLog.distance = v1; 
-                }
-
-                if(logToEdit) {
-                    const idx = db.logs.findIndex(l => l.id === logToEdit.id);
-                    db.logs[idx] = newLog;
-                } else db.logs.push(newLog);
-                
-                saveDb();
-                onSuccess();
+                if(ex.type === 'strength') { const v2 = parseFloat(document.getElementById('inputVal2').value); if(!v1 || !v2) return alert("Données manquantes"); newLog.weight = v1; newLog.reps = v2; newLog.rm1 = calculate1RM(v1, v2); }
+                else { if(!v1 && v1 !== 0) return alert("Donnée manquante"); newLog.distance = v1; }
+                if(logToEdit) db.logs[db.logs.findIndex(l => l.id === logToEdit.id)] = newLog; else db.logs.push(newLog);
+                saveData().then(() => onSuccess());
             };
         }
 
-        // --- 1. LOG VIEW ---
-        function renderLogView() {
-            if(db.users.length === 0 || db.exercises.length === 0) {
-                app.innerHTML = `<div class="text-center p-10 text-slate-500">Créez d'abord des athlètes et exercices dans Gestion.</div>`;
-                return;
-            }
-            const container = document.createElement('div');
-            container.className = "max-w-lg mx-auto";
-            app.appendChild(container);
-            buildForm(container, null, () => router('history'));
-        }
-
-        // --- 2. HISTORY VIEW ---
+        // --- 2. HISTORIQUE ---
         function renderHistoryView() {
-            const container = document.createElement('div');
-            container.className = "max-w-lg mx-auto pb-6";
-            container.innerHTML = `
-                <h2 class="text-2xl font-bold text-slate-800 mb-4 sticky top-0 bg-slate-50 z-10 py-2">Historique</h2>
-                <div class="bg-white p-3 rounded-xl shadow-sm border border-slate-100 mb-4 grid grid-cols-2 gap-2">
-                    <input type="date" id="filterDate" class="w-full text-sm p-1.5 bg-slate-50 border-none rounded">
-                    <select id="filterUser" class="w-full text-sm p-1.5 bg-slate-50 border-none rounded">
-                        <option value="">Tous les athlètes</option>
-                        ${db.users.map(u => `<option value="${u.id}">${u.name}</option>`).join('')}
-                    </select>
-                    <select id="filterEx" class="col-span-2 w-full text-sm p-1.5 bg-slate-50 border-none rounded">
-                        <option value="">Tous les exercices</option>
-                        ${db.exercises.map(e => `<option value="${e.id}">${e.name}</option>`).join('')}
-                    </select>
-                    <button id="clearFilters" class="col-span-2 text-xs text-blue-600 font-bold py-2 hidden">Effacer les filtres</button>
-                </div>
-                <div id="logsList" class="space-y-3"></div>
-            `;
+            const container = document.createElement('div'); container.className = "max-w-lg mx-auto pb-6";
+            container.innerHTML = `<h2 class="text-2xl font-bold text-slate-800 mb-4 sticky top-0 bg-slate-50 z-10 py-2">Historique</h2><div class="bg-white p-3 rounded-xl shadow-sm border border-slate-100 mb-4 grid grid-cols-2 gap-2"><input type="date" id="filterDate" class="w-full text-sm p-1.5 bg-slate-50 border-none rounded"><select id="filterUser" class="w-full text-sm p-1.5 bg-slate-50 border-none rounded"><option value="">Tous les athlètes</option>${db.users.map(u => `<option value="${u.id}">${u.name}</option>`).join('')}</select><select id="filterEx" class="col-span-2 w-full text-sm p-1.5 bg-slate-50 border-none rounded"><option value="">Tous les exercices</option>${db.exercises.map(e => `<option value="${e.id}">${e.name}</option>`).join('')}</select><button id="clearFilters" class="col-span-2 text-xs text-blue-600 font-bold py-2 hidden">Effacer les filtres</button></div><div id="logsList" class="space-y-3"></div>`;
             app.appendChild(container);
-
-            const logsListEl = document.getElementById('logsList');
-            const fDate = document.getElementById('filterDate');
-            const fUser = document.getElementById('filterUser');
-            const fEx = document.getElementById('filterEx');
-            const clearBtn = document.getElementById('clearFilters');
-
+            const logsListEl = document.getElementById('logsList'), fDate = document.getElementById('filterDate'), fUser = document.getElementById('filterUser'), fEx = document.getElementById('filterEx'), clearBtn = document.getElementById('clearFilters');
             const renderLogs = (logs) => {
-                logsListEl.innerHTML = '';
-                if(logs.length === 0) {
-                    logsListEl.innerHTML = `<div class="text-center text-slate-400 py-10 italic">Aucune donnée trouvée.</div>`;
-                    return;
-                }
+                logsListEl.innerHTML = ''; if(logs.length === 0) { logsListEl.innerHTML = `<div class="text-center text-slate-400 py-10 italic">Aucune donnée trouvée.</div>`; return; }
                 logs.forEach(log => {
-                    const user = db.users.find(u => u.id === log.userId) || { name: '?', color: '#ccc' };
-                    const ex = db.exercises.find(e => e.id === log.exId);
-                    
-                    let content;
-                    if(ex && ex.type === 'strength') {
-                        content = `<span class="font-bold text-slate-800">${log.weight}kg</span> <span class="text-slate-500 text-sm">x${log.reps}</span>`;
-                        if(log.rm1) content += ` <span class="text-xs text-blue-600 font-bold">(RM:${log.rm1})</span>`;
-                    } else if(ex) {
-                        content = `<span class="font-bold text-slate-800">${log.distance} ${ex.unit}</span>`;
-                    } else {
-                        content = 'Donnée orpheline';
-                    }
-
-                    const card = document.createElement('div');
-                    card.className = "bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex justify-between items-center";
-                    card.innerHTML = `
-                        <div class="flex-1">
-                            <div class="flex items-center gap-2 mb-1">
-                                <span class="text-[10px] font-bold uppercase text-slate-400">${formatDate(log.date)}</span>
-                                <div class="flex items-center gap-1 px-2 py-0.5 rounded bg-slate-100">
-                                    <div class="w-2 h-2 rounded-full" style="background-color:${user.color}"></div>
-                                    <span class="text-[10px] font-bold uppercase text-slate-600">${user.name}</span>
-                                </div>
-                            </div>
-                            <div class="font-bold text-slate-700">${ex ? ex.name : 'Exercice supprimé'}</div>
-                            <div class="mt-1">${content}</div>
-                            ${log.comment ? `<div class="mt-1 text-xs text-slate-500 italic">"${log.comment}"</div>` : ''}
-                        </div>
-                        <div class="flex flex-col gap-2 pl-3 border-l border-slate-50">
-                            <button onclick="showEditModal('${log.id}')" class="text-blue-400 hover:text-blue-600 text-xl">✎</button>
-                            <button onclick="deleteLog('${log.id}')" class="text-red-300 hover:text-red-500 text-xl">✕</button>
-                        </div>
-                    `;
-                    logsListEl.appendChild(card);
+                    const user = db.users.find(u => u.id === log.userId) || { name: '?', color: '#ccc' }, ex = db.exercises.find(e => e.id === log.exId);
+                    let content = (ex && ex.type === 'strength') ? `<span class="font-bold text-slate-800">${log.weight}kg</span> <span class="text-slate-500 text-sm">x${log.reps}</span>` + (log.rm1 ? ` <span class="text-xs text-blue-600 font-bold">(RM:${log.rm1})</span>` : '') : (ex ? `<span class="font-bold text-slate-800">${log.distance} ${ex.unit}</span>` : 'Orphelin');
+                    const actions = isAdmin ? `<div class="flex flex-col gap-2 pl-3 border-l border-slate-50"><button onclick="showEditModal('${log.id}')" class="text-blue-400 hover:text-blue-600 text-xl">✎</button><button onclick="deleteLog('${log.id}')" class="text-red-300 hover:text-red-500 text-xl">✕</button></div>` : '';
+                    logsListEl.innerHTML += `<div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex justify-between items-center"><div class="flex-1"><div class="flex items-center gap-2 mb-1"><span class="text-[10px] font-bold uppercase text-slate-400">${formatDate(log.date)}</span><div class="flex items-center gap-1 px-2 py-0.5 rounded bg-slate-100"><div class="w-2 h-2 rounded-full" style="background-color:${user.color}"></div><span class="text-[10px] font-bold uppercase text-slate-600">${user.name}</span></div></div><div class="font-bold text-slate-700">${ex ? ex.name : 'Supprimé'}</div><div class="mt-1">${content}</div>${log.comment ? `<div class="mt-1 text-xs text-slate-500 italic">"${log.comment}"</div>` : ''}</div>${actions}</div>`;
                 });
             };
-
             const applyFilters = () => {
                 let filtered = [...db.logs].sort((a,b) => new Date(b.date) - new Date(a.date));
                 if(fDate.value) filtered = filtered.filter(l => l.date === fDate.value);
                 if(fUser.value) filtered = filtered.filter(l => l.userId === fUser.value);
                 if(fEx.value) filtered = filtered.filter(l => l.exId === fEx.value);
-                if(fDate.value || fUser.value || fEx.value) clearBtn.classList.remove('hidden');
-                else clearBtn.classList.add('hidden');
+                if(fDate.value || fUser.value || fEx.value) clearBtn.classList.remove('hidden'); else clearBtn.classList.add('hidden');
                 renderLogs(filtered);
             };
-
             [fDate, fUser, fEx].forEach(el => el.addEventListener('change', applyFilters));
-            clearBtn.addEventListener('click', () => { 
-                fDate.value = ''; fUser.value = ''; fEx.value = ''; 
-                applyFilters(); 
-            });
+            clearBtn.addEventListener('click', () => { fDate.value = ''; fUser.value = ''; fEx.value = ''; applyFilters(); });
             applyFilters();
         }
 
-        // Modal Logic
-        const modalContainer = document.getElementById('modalContainer');
-        const modalContent = document.getElementById('modalContent');
-        window.showEditModal = (id) => {
-            buildForm(modalContent, id, () => { closeModal(); router('history'); });
-            modalContainer.classList.remove('hidden');
-        };
+        const modalContainer = document.getElementById('modalContainer'), modalContent = document.getElementById('modalContent');
+        window.showEditModal = (id) => { buildForm(modalContent, id, () => { closeModal(); router('history'); }); modalContainer.classList.remove('hidden'); };
         window.closeModal = () => { modalContainer.classList.add('hidden'); modalContent.innerHTML = ''; };
-        window.deleteLog = (id) => { if(confirm("Supprimer ?")) { db.logs = db.logs.filter(l => l.id !== id); saveDb(); router('history'); }};
+        window.deleteLog = (id) => { if(confirm("Supprimer ?")) { db.logs = db.logs.filter(l => l.id !== id); saveData().then(() => router('history')); }};
 
-        // --- 3. STATS VIEW ---
+        // --- 3. STATS (AVEC TOUTES VOS FONCTIONS AVANCEES) ---
         function renderStatsView() {
-            app.innerHTML = '';
-            if(currentChart) { currentChart.destroy(); currentChart = null; }
-
-            const container = document.createElement('div');
-            container.className = "max-w-lg mx-auto flex flex-col h-full";
-            
-            container.innerHTML = `
-                <div class="flex justify-between items-center mb-4">
-                    <h2 class="text-2xl font-bold text-slate-800">Analyse</h2>
-                    <button onclick="toggleFullscreen()" class="text-xs bg-slate-200 px-2 py-1 rounded">⛶ Plein écran</button>
-                </div>
-                
-                <div class="flex border-b border-slate-200 mb-4">
-                    <button id="tabCompare" class="flex-1 pb-2 text-sm font-medium transition ${statState.mode === 'compare' ? 'tab-active' : 'tab-inactive'}">Comparatif</button>
-                    <button id="tabAthlete" class="flex-1 pb-2 text-sm font-medium transition ${statState.mode === 'athlete' ? 'tab-active' : 'tab-inactive'}">Par Athlète</button>
-                </div>
-
-                <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100 mb-4 flex flex-col gap-3">
-                    <div id="selectionArea"></div>
-                    
-                    <div class="flex items-center justify-between border-t border-slate-100 pt-3">
-                        <span class="text-xs font-semibold text-slate-400 uppercase">Échelle Y</span>
-                        <div class="flex items-center gap-2">
-                             <span class="text-xs font-bold text-slate-600" id="scaleLabel">${statState.scaleZero ? '0 (Fixe)' : 'Zoom (Auto)'}</span>
-                             <label class="switch">
-                                <input type="checkbox" id="scaleToggle" ${statState.scaleZero ? 'checked' : ''}>
-                                <span class="slider"></span>
-                            </label>
-                        </div>
-                    </div>
-                </div>
-
-                <div id="chartWrapper" class="bg-white p-2 rounded-xl shadow-lg border border-slate-100 flex-1 relative min-h-[300px] mb-4 overflow-hidden">
-                    <canvas id="perfChart"></canvas>
-                </div>
-            `;
+            app.innerHTML = ''; if(currentChart) { currentChart.destroy(); currentChart = null; }
+            const container = document.createElement('div'); container.className = "max-w-lg mx-auto flex flex-col h-full";
+            container.innerHTML = `<div class="flex justify-between items-center mb-4"><h2 class="text-2xl font-bold text-slate-800">Analyse</h2><button onclick="toggleFullscreen()" class="text-xs bg-slate-200 px-2 py-1 rounded">⛶ Plein écran</button></div><div class="flex border-b border-slate-200 mb-4"><button id="tabCompare" class="flex-1 pb-2 text-sm font-medium transition ${statState.mode === 'compare' ? 'tab-active' : 'tab-inactive'}">Comparatif</button><button id="tabAthlete" class="flex-1 pb-2 text-sm font-medium transition ${statState.mode === 'athlete' ? 'tab-active' : 'tab-inactive'}">Par Athlète</button></div><div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100 mb-4 flex flex-col gap-3"><div id="selectionArea"></div><div class="flex items-center justify-between border-t border-slate-100 pt-3"><span class="text-xs font-semibold text-slate-400 uppercase">Échelle Y</span><div class="flex items-center gap-2 cursor-pointer" onclick="toggleScale()"><span class="text-xs font-bold text-slate-600" id="scaleLabel">${statState.scaleZero ? '0 (Fixe)' : 'Zoom (Auto)'}</span><label class="switch"><input type="checkbox" id="scaleToggle" ${statState.scaleZero ? 'checked' : ''}><span class="slider"></span></label></div></div></div><div id="chartWrapper" class="bg-white p-2 rounded-xl shadow-lg border border-slate-100 flex-1 relative min-h-[300px] mb-4 overflow-hidden"><canvas id="perfChart"></canvas></div>`;
             app.appendChild(container);
-
             document.getElementById('tabCompare').onclick = () => { statState.mode = 'compare'; statState.selectedId = null; renderStatsView(); };
             document.getElementById('tabAthlete').onclick = () => { statState.mode = 'athlete'; statState.selectedId = null; renderStatsView(); };
-
-            window.toggleFullscreen = () => {
-                const elem = document.getElementById("chartWrapper");
-                if (!document.fullscreenElement) elem.requestFullscreen().catch(err => alert(`Erreur: ${err.message}`));
-                else document.exitFullscreen();
-            };
-
-            const selectionArea = document.getElementById('selectionArea');
-            const selectId = 'statSelect';
-
+            window.toggleFullscreen = () => { const elem = document.getElementById("chartWrapper"); if (!document.fullscreenElement) elem.requestFullscreen().catch(e=>alert(e)); else document.exitFullscreen(); };
+            
+            const selectionArea = document.getElementById('selectionArea'), selectId = 'statSelect';
             const createFilterUI = () => {
                 if (statState.mode === 'compare') {
-                    const defaultEx = db.exercises.length > 0 ? db.exercises[0].id : '';
-                    if (!statState.selectedId && defaultEx) statState.selectedId = defaultEx;
-                    selectionArea.innerHTML = `
-                        <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Exercice</label>
-                        <select id="${selectId}" class="block w-full rounded-lg border-slate-200 bg-white p-2 text-sm font-semibold">
-                            ${db.exercises.map(e => `<option value="${e.id}" ${statState.selectedId === e.id ? 'selected' : ''}>${e.name}</option>`).join('')}
-                        </select>
-                    `;
+                    const defaultEx = db.exercises.length > 0 ? db.exercises[0].id : ''; if (!statState.selectedId && defaultEx) statState.selectedId = defaultEx;
+                    selectionArea.innerHTML = `<label class="block text-xs font-bold text-slate-400 uppercase mb-1">Exercice</label><select id="${selectId}" class="block w-full rounded-lg border-slate-200 bg-white p-2 text-sm font-semibold">${db.exercises.map(e => `<option value="${e.id}" ${statState.selectedId === e.id ? 'selected' : ''}>${e.name}</option>`).join('')}</select>`;
                 } else {
-                    const defaultUser = db.users.length > 0 ? db.users[0].id : '';
-                    if (!statState.selectedId && defaultUser) statState.selectedId = defaultUser;
-                    selectionArea.innerHTML = `
-                        <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Athlète</label>
-                        <select id="${selectId}" class="block w-full rounded-lg border-slate-200 bg-white p-2 text-sm font-semibold mb-2">
-                             ${db.users.map(u => `<option value="${u.id}" ${statState.selectedId === u.id ? 'selected' : ''}>${u.name}</option>`).join('')}
-                        </select>
-                         <div class="flex bg-slate-100 p-1 rounded-lg">
-                            <button id="typeStrength" class="flex-1 py-1 text-xs font-bold rounded ${statState.athleteViewType === 'strength' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400'}" onclick="setAthleteType('strength')">FORCE</button>
-                            <button id="typeCardio" class="flex-1 py-1 text-xs font-bold rounded ${statState.athleteViewType === 'cardio' ? 'bg-white text-green-600 shadow-sm' : 'text-slate-400'}" onclick="setAthleteType('cardio')">CARDIO</button>
-                        </div>
-                    `;
+                    const defaultUser = db.users.length > 0 ? db.users[0].id : ''; if (!statState.selectedId && defaultUser) statState.selectedId = defaultUser;
+                    selectionArea.innerHTML = `<label class="block text-xs font-bold text-slate-400 uppercase mb-1">Athlète</label><select id="${selectId}" class="block w-full rounded-lg border-slate-200 bg-white p-2 text-sm font-semibold mb-2">${db.users.map(u => `<option value="${u.id}" ${statState.selectedId === u.id ? 'selected' : ''}>${u.name}</option>`).join('')}</select><div class="flex bg-slate-100 p-1 rounded-lg"><button class="flex-1 py-1 text-xs font-bold rounded ${statState.athleteViewType === 'strength' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400'}" onclick="setAthleteType('strength')">FORCE</button><button class="flex-1 py-1 text-xs font-bold rounded ${statState.athleteViewType === 'cardio' ? 'bg-white text-green-600 shadow-sm' : 'text-slate-400'}" onclick="setAthleteType('cardio')">CARDIO</button></div>`;
                     window.setAthleteType = (t) => { statState.athleteViewType = t; renderStatsView(); };
                 }
             };
             createFilterUI();
 
             const ctx = document.getElementById('perfChart').getContext('2d');
-            
             const updateChart = () => {
-                const select = document.getElementById(selectId);
-                if (!select || !select.value) return;
-                statState.selectedId = select.value;
-
-                const datasets = [];
-                let allLabels = new Set();
-                let yAxisLabel = "";
-                const todayISO = getTodayISO();
-
+                const select = document.getElementById(selectId); if (!select || !select.value) return; statState.selectedId = select.value;
+                const datasets = []; let allLabels = new Set(); let yAxisLabel = ""; const todayISO = getTodayISO();
+                
+                // FONCTION PROJECTION DATE DU JOUR
                 const addProjection = (dataPoints) => {
                     if(dataPoints.length > 0) {
                         const lastPt = dataPoints[dataPoints.length - 1];
-                        if(lastPt.x !== formatDate(todayISO)) {
-                            dataPoints.push({ x: formatDate(todayISO), y: lastPt.y, isProjection: true });
-                        }
+                        if(lastPt.x !== formatDate(todayISO)) dataPoints.push({ x: formatDate(todayISO), y: lastPt.y, isProjection: true });
                     }
                     return dataPoints;
                 };
 
-                // Fonction de style de segment dynamique (chevauchement)
-                const segmentStyle = {
-                    borderWidth: (ctx) => {
-                        // Par défaut, épaisseur normale
-                        if (!ctx.p0.parsed) return 4;
-                        
-                        const yVal = ctx.p0.parsed.y;
-                        const dsIndex = ctx.datasetIndex;
-                        const allDatasets = ctx.chart.data.datasets;
-                        
-                        // On vérifie si un dataset d'index plus élevé (qui est dessiné par dessus)
-                        // a une valeur quasi identique à ce point
-                        let isCovered = false;
-                        for (let i = dsIndex + 1; i < allDatasets.length; i++) {
-                            const otherDataset = allDatasets[i];
-                            // On cherche si l'autre dataset a un point au même index X
-                            // Note: C'est simplifié car les points peuvent ne pas être alignés parfaitement en X
-                            // Mais Chart.js aligne les index si les labels sont partagés.
-                            const otherMeta = ctx.chart.getDatasetMeta(i);
-                            // On regarde si l'autre dataset est visible
-                            if (!otherMeta.hidden) {
-                                // On cherche le point correspondant
-                                const otherPoint = otherDataset.data[ctx.p0DataIndex]; 
-                                if (otherPoint && Math.abs(otherPoint.y - yVal) < 0.1) {
-                                    isCovered = true;
-                                    break;
-                                }
-                            }
-                        }
-                        // Si recouvert, on affiine le trait
-                        return isCovered ? 1 : 4; 
-                    }
-                };
+                // FONCTION SEGMENT FIN SI CHEVAUCHEMENT
+                const segmentStyle = { borderWidth: ctx => { if(!ctx.p0.parsed) return 4; const y=ctx.p0.parsed.y, idx=ctx.datasetIndex, all=ctx.chart.data.datasets; let isCovered=false; for(let i=idx+1; i<all.length; i++) { if(!ctx.chart.getDatasetMeta(i).hidden) { const p = all[i].data[ctx.p0DataIndex]; if(p && Math.abs(p.y-y) < (y*0.02)) { isCovered=true; break; } } } return isCovered ? 1 : 4; } };
 
                 if (statState.mode === 'compare') {
-                    const exId = statState.selectedId;
-                    const ex = db.exercises.find(e => e.id === exId);
-                    yAxisLabel = `${ex.name} (${ex.unit || 'val'})`;
-                    
+                    const exId = statState.selectedId, ex = db.exercises.find(e => e.id === exId); yAxisLabel = `${ex.name} (${ex.unit})`;
                     db.users.forEach(user => {
                         const logs = db.logs.filter(l => l.userId === user.id && l.exId === exId).sort((a,b) => new Date(a.date) - new Date(b.date));
-                        const validLogs = logs.filter(l => (ex.type === 'strength' ? l.rm1 > 0 : l.distance > 0));
-
-                        if(validLogs.length > 0) {
-                            let dataPoints = validLogs.map(l => ({ x: formatDate(l.date), y: ex.type === 'strength' ? l.rm1 : l.distance }));
-                            dataPoints = addProjection(dataPoints);
-                            dataPoints.forEach(p => allLabels.add(p.x));
-
-                            datasets.push({
-                                label: user.name,
-                                data: dataPoints,
-                                borderColor: user.color,
-                                backgroundColor: user.color,
-                                tension: 0,
-                                segment: segmentStyle, // Application du style dynamique
-                                pointRadius: (ctx) => ctx.raw.isProjection ? 0 : 4,
-                                pointHoverRadius: (ctx) => ctx.raw.isProjection ? 0 : 7,
-                            });
+                        const valid = logs.filter(l => (ex.type === 'strength' ? l.rm1 > 0 : l.distance > 0));
+                        if(valid.length > 0) {
+                            let pts = valid.map(l => ({ x: formatDate(l.date), y: ex.type === 'strength' ? l.rm1 : l.distance })); pts = addProjection(pts); pts.forEach(p => allLabels.add(p.x));
+                            datasets.push({ label: user.name, data: pts, borderColor: user.color, backgroundColor: user.color, tension: 0, segment: segmentStyle, pointRadius: c => c.raw.isProjection ? 0 : 4, pointHoverRadius: c => c.raw.isProjection ? 0 : 7 });
                         }
                     });
                 } else {
-                    const userId = statState.selectedId;
-                    const targetType = statState.athleteViewType;
-                    yAxisLabel = targetType === 'strength' ? 'Poids (kg)' : 'Distance / Répétitions';
-
-                    db.exercises.filter(e => e.type === targetType).forEach((ex, idx) => {
-                        const colors = ['#e6194b', '#3cb44b', '#ffe119', '#4363d8', '#f58231'];
-                        const color = colors[idx % colors.length];
+                    const userId = statState.selectedId, t = statState.athleteViewType; yAxisLabel = t === 'strength' ? 'Poids (kg)' : 'Distance';
+                    db.exercises.filter(e => e.type === t).forEach((ex, idx) => {
+                        const colors = ['#e6194b', '#3cb44b', '#ffe119', '#4363d8', '#f58231'], color = colors[idx % colors.length];
                         const logs = db.logs.filter(l => l.userId === userId && l.exId === ex.id).sort((a,b) => new Date(a.date) - new Date(b.date));
-                        const validLogs = logs.filter(l => (targetType === 'strength' ? l.rm1 > 0 : l.distance > 0));
-
-                        if(validLogs.length > 0) {
-                            let dataPoints = validLogs.map(l => ({ x: formatDate(l.date), y: targetType === 'strength' ? l.rm1 : l.distance }));
-                            dataPoints = addProjection(dataPoints);
-                            dataPoints.forEach(p => allLabels.add(p.x));
-
-                            datasets.push({
-                                label: ex.name,
-                                data: dataPoints,
-                                borderColor: color,
-                                backgroundColor: color,
-                                tension: 0,
-                                segment: segmentStyle,
-                                pointRadius: (ctx) => ctx.raw.isProjection ? 0 : 4,
-                                pointHoverRadius: (ctx) => ctx.raw.isProjection ? 0 : 7,
-                            });
+                        const valid = logs.filter(l => (t === 'strength' ? l.rm1 > 0 : l.distance > 0));
+                        if(valid.length > 0) {
+                            let pts = valid.map(l => ({ x: formatDate(l.date), y: t === 'strength' ? l.rm1 : l.distance })); pts = addProjection(pts); pts.forEach(p => allLabels.add(p.x));
+                            datasets.push({ label: ex.name, data: pts, borderColor: color, backgroundColor: color, tension: 0, segment: segmentStyle, pointRadius: c => c.raw.isProjection ? 0 : 4, pointHoverRadius: c => c.raw.isProjection ? 0 : 7 });
                         }
                     });
                 }
-
-                const parseFrDate = (str) => { const [d, m, y] = str.split('/'); return new Date(`${y}-${m}-${d}`); };
+                const parseFrDate = (s) => { const [d,m,y]=s.split('/'); return new Date(`${y}-${m}-${d}`); };
                 const sortedLabels = Array.from(allLabels).sort((a,b) => parseFrDate(a) - parseFrDate(b));
-
                 if(currentChart) currentChart.destroy();
-                
-                currentChart = new Chart(ctx, {
-                    type: 'line',
-                    data: { labels: sortedLabels, datasets },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        interaction: { mode: 'nearest', intersect: false },
-                        plugins: {
-                            legend: { display: true, position: 'bottom', labels: { boxWidth: 20, usePointStyle: true } },
-                            tooltip: { callbacks: { label: (c) => c.raw.isProjection ? `${c.dataset.label}: (Projection)` : `${c.dataset.label}: ${c.formattedValue}` } }
-                        },
-                        scales: {
-                            x: { grid: { display: false } },
-                            y: { beginAtZero: statState.scaleZero, title: { display: true, text: yAxisLabel } }
-                        }
-                    }
-                });
+                currentChart = new Chart(ctx, { type: 'line', data: { labels: sortedLabels, datasets }, options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'nearest', intersect: false }, plugins: { legend: { display: true, position: 'bottom', labels: { boxWidth: 20, usePointStyle: true } }, tooltip: { callbacks: { label: c => c.raw.isProjection ? `${c.dataset.label} (Proj)` : `${c.dataset.label}: ${c.formattedValue}` } } }, scales: { x: { grid: { display: false } }, y: { beginAtZero: statState.scaleZero, title: { display: true, text: yAxisLabel } } } } });
             };
-
-            const selEl = document.getElementById(selectId);
-            if(selEl) selEl.addEventListener('change', updateChart);
-            
-            document.getElementById('scaleToggle').addEventListener('change', (e) => {
-                statState.scaleZero = e.target.checked;
-                document.getElementById('scaleLabel').innerText = statState.scaleZero ? '0 (Fixe)' : 'Zoom (Auto)';
-                updateChart();
-            });
-
+            const selEl = document.getElementById(selectId); if(selEl) selEl.addEventListener('change', updateChart);
+            window.toggleScale = () => { statState.scaleZero = !statState.scaleZero; document.getElementById('scaleToggle').checked = statState.scaleZero; document.getElementById('scaleLabel').innerText = statState.scaleZero ? '0 (Fixe)' : 'Zoom (Auto)'; updateChart(); };
             updateChart();
         }
 
-        // --- 5. SETTINGS VIEW ---
+        // --- 4. SETTINGS VIEW ---
         function renderSettingsView() {
-            const container = document.createElement('div');
-            container.className = "max-w-lg mx-auto space-y-6 pb-8";
-            container.innerHTML = `<h2 class="text-2xl font-bold text-slate-800 mb-2">Gestion</h2>`;
-
-            const backupBox = document.createElement('div');
-            backupBox.className = "bg-white p-5 rounded-xl shadow-sm border border-slate-100";
-            backupBox.innerHTML = `
-                <h3 class="font-bold text-slate-700 mb-2">Sauvegarde des données</h3>
-                <p class="text-xs text-slate-500 mb-3">Exportez vos données en fichier JSON.</p>
-                <div class="flex gap-2">
-                    <button id="exportBtn" class="bg-blue-100 text-blue-700 px-3 py-2 rounded-lg text-sm font-bold flex-1">⬇ Exporter</button>
-                    <button onclick="document.getElementById('importFile').click()" class="bg-slate-100 text-slate-700 px-3 py-2 rounded-lg text-sm font-bold flex-1">⬆ Restaurer</button>
-                    <input type="file" id="importFile" class="hidden" accept=".json">
-                </div>
-            `;
-            container.appendChild(backupBox);
-
-            const userBox = document.createElement('div');
-            userBox.className = "bg-white p-5 rounded-xl shadow-sm border border-slate-100";
-            userBox.innerHTML = `
-                <h3 class="font-bold text-slate-700 mb-3">Athlètes & Couleurs</h3>
-                <div class="flex gap-2 mb-4">
-                    <input type="text" id="newUserName" placeholder="Nom..." class="flex-1 rounded-lg bg-slate-50 border-none text-sm p-2">
-                    <button id="addUserBtn" class="bg-green-500 text-white rounded-lg px-3 font-bold">+</button>
-                </div>
-                <ul class="space-y-2 max-h-60 overflow-y-auto custom-scrollbar">
-                    ${db.users.map(u => `
-                        <li class="flex justify-between items-center bg-slate-50 p-2 rounded-lg border border-slate-100">
-                            <div class="flex items-center gap-2">
-                                <input type="color" value="${u.color}" onchange="updateUserColor('${u.id}', this.value)" class="w-8 h-8 rounded cursor-pointer border-none p-0 bg-transparent">
-                                <span class="font-medium text-slate-700">${u.name}</span>
-                            </div>
-                            <div class="flex gap-2">
-                                <button onclick="renameUser('${u.id}')" class="text-slate-400 hover:text-blue-500">✎</button>
-                                <button onclick="deleteUser('${u.id}')" class="text-slate-400 hover:text-red-500">✕</button>
-                            </div>
-                        </li>
-                    `).join('')}
-                </ul>`;
+            if(!isAdmin) return;
+            const container = document.createElement('div'); container.className = "max-w-lg mx-auto space-y-6 pb-8"; container.innerHTML = `<h2 class="text-2xl font-bold text-slate-800 mb-2">Gestion</h2>`;
+            container.innerHTML += `<div class="bg-blue-50 border border-blue-200 p-4 rounded-xl text-center"><h3 class="font-bold text-blue-800 mb-2">Synchronisation Initiale</h3><p class="text-sm text-blue-600 mb-3">Si vous venez de créer votre lien Google Sheet, cliquez ici pour envoyer vos données actuelles vers le Cloud.</p><button onclick="migrateLocalToCloud()" class="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold shadow hover:bg-blue-700">📤 Envoyer mes données locales vers le Cloud</button></div>`;
+            const userBox = document.createElement('div'); userBox.className = "bg-white p-5 rounded-xl shadow-sm border border-slate-100";
+            userBox.innerHTML = `<h3 class="font-bold text-slate-700 mb-3">Athlètes & Couleurs</h3><div class="flex gap-2 mb-4"><input type="text" id="newUserName" placeholder="Nom..." class="flex-1 rounded-lg bg-slate-50 border-none text-sm p-2"><button id="addUserBtn" class="bg-green-500 text-white rounded-lg px-3 font-bold">+</button></div><ul class="space-y-2 max-h-60 overflow-y-auto custom-scrollbar">${db.users.map(u => `<li class="flex justify-between items-center bg-slate-50 p-2 rounded-lg border border-slate-100"><div class="flex items-center gap-2"><input type="color" value="${u.color}" onchange="updateUserColor('${u.id}', this.value)" class="w-8 h-8 rounded cursor-pointer border-none p-0 bg-transparent"><span class="font-medium text-slate-700">${u.name}</span></div><div class="flex gap-2"><button onclick="renameUser('${u.id}')" class="text-slate-400">✎</button><button onclick="deleteUser('${u.id}')" class="text-slate-400">✕</button></div></li>`).join('')}</ul>`;
             container.appendChild(userBox);
-
-            const exBox = document.createElement('div');
-            exBox.className = "bg-white p-5 rounded-xl shadow-sm border border-slate-100";
-            exBox.innerHTML = `
-                <h3 class="font-bold text-slate-700 mb-3">Exercices</h3>
-                <div class="flex gap-2 mb-2">
-                    <input type="text" id="newExName" placeholder="Nom..." class="flex-1 rounded-lg bg-slate-50 border-none text-sm p-2">
-                    <select id="newExType" class="rounded-lg bg-slate-50 border-none text-sm p-2 w-24">
-                        <option value="strength">Muscu</option>
-                        <option value="cardio">Cardio</option>
-                    </select>
-                </div>
-                <div id="unitSelectorDiv" class="mb-2 hidden">
-                     <label class="text-xs text-slate-400 font-bold uppercase">Unité :</label>
-                     <div class="flex gap-2 mt-1">
-                        <label class="flex items-center gap-1 text-sm"><input type="radio" name="newExUnit" value="km" checked> km</label>
-                        <label class="flex items-center gap-1 text-sm"><input type="radio" name="newExUnit" value="m"> m</label>
-                        <label class="flex items-center gap-1 text-sm"><input type="radio" name="newExUnit" value="réps"> réps/pas</label>
-                     </div>
-                </div>
-
-                <button id="addExBtn" class="w-full bg-blue-600 text-white rounded-lg p-2 text-sm font-bold mb-4">Ajouter</button>
-                <ul class="space-y-2 max-h-60 overflow-y-auto custom-scrollbar">
-                    ${db.exercises.map(e => `
-                        <li class="flex justify-between items-center bg-slate-50 p-2 rounded-lg border border-slate-100">
-                            <div>
-                                <div class="font-medium text-slate-700">${e.name}</div>
-                                <div class="text-[10px] uppercase font-bold text-slate-400">${e.type === 'cardio' ? `Cardio (${e.unit})` : 'Muscu (kg)'}</div>
-                            </div>
-                            <div class="flex gap-2">
-                                <button onclick="renameExercise('${e.id}')" class="text-slate-400 hover:text-blue-500">✎</button>
-                                <button onclick="deleteExercise('${e.id}')" class="text-slate-400 hover:text-red-500">✕</button>
-                            </div>
-                        </li>
-                    `).join('')}
-                </ul>`;
+            const exBox = document.createElement('div'); exBox.className = "bg-white p-5 rounded-xl shadow-sm border border-slate-100";
+            exBox.innerHTML = `<h3 class="font-bold text-slate-700 mb-3">Exercices</h3><div class="flex gap-2 mb-2"><input type="text" id="newExName" placeholder="Nom..." class="flex-1 rounded-lg bg-slate-50 border-none text-sm p-2"><select id="newExType" class="rounded-lg bg-slate-50 border-none text-sm p-2 w-24"><option value="strength">Muscu</option><option value="cardio">Cardio</option></select></div><div id="unitSelectorDiv" class="mb-2 hidden"><div class="flex gap-2 mt-1 text-sm text-slate-500"><label><input type="radio" name="newExUnit" value="km" checked> km</label><label><input type="radio" name="newExUnit" value="m"> m</label><label><input type="radio" name="newExUnit" value="réps"> réps</label></div></div><button id="addExBtn" class="w-full bg-blue-600 text-white rounded-lg p-2 text-sm font-bold mb-4">Ajouter</button><ul class="space-y-2 max-h-60 overflow-y-auto custom-scrollbar">${db.exercises.map(e => `<li class="flex justify-between items-center bg-slate-50 p-2 rounded-lg border border-slate-100"><div><div class="font-medium text-slate-700">${e.name}</div><div class="text-[10px] uppercase font-bold text-slate-400">${e.type === 'cardio' ? `Cardio (${e.unit})` : 'Muscu (kg)'}</div></div><div class="flex gap-2"><button onclick="renameExercise('${e.id}')" class="text-slate-400">✎</button><button onclick="deleteExercise('${e.id}')" class="text-slate-400">✕</button></div></li>`).join('')}</ul>`;
             container.appendChild(exBox);
             app.appendChild(container);
-
-            const typeSelect = document.getElementById('newExType');
-            const unitDiv = document.getElementById('unitSelectorDiv');
-            typeSelect.onchange = () => {
-                if(typeSelect.value === 'cardio') unitDiv.classList.remove('hidden');
-                else unitDiv.classList.add('hidden');
-            };
-
-            document.getElementById('addUserBtn').onclick = () => {
-                const name = document.getElementById('newUserName').value.trim();
-                const randomColor = '#' + Math.floor(Math.random()*16777215).toString(16);
-                if(name) { db.users.push({ id: generateId(), name, color: randomColor }); saveDb(); renderSettingsView(); }
-            };
-
-            document.getElementById('addExBtn').onclick = () => {
-                const name = document.getElementById('newExName').value.trim();
-                const type = document.getElementById('newExType').value;
-                let unit = 'kg';
-                if(type === 'cardio') {
-                    unit = document.querySelector('input[name="newExUnit"]:checked').value;
-                }
-                if(name) { db.exercises.push({ id: generateId(), name, type, unit }); saveDb(); renderSettingsView(); }
-            };
-
-            document.getElementById('exportBtn').onclick = () => {
-                const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(db));
-                const downloadAnchorNode = document.createElement('a');
-                downloadAnchorNode.setAttribute("href", dataStr);
-                downloadAnchorNode.setAttribute("download", "plo_backup_" + getTodayISO() + ".json");
-                document.body.appendChild(downloadAnchorNode);
-                downloadAnchorNode.click();
-                downloadAnchorNode.remove();
-            };
-
-            document.getElementById('importFile').onchange = (e) => {
-                const file = e.target.files[0];
-                if (!file) return;
-                const reader = new FileReader();
-                reader.onload = (event) => {
-                    try {
-                        const importedDb = JSON.parse(event.target.result);
-                        if(confirm("Cela va remplacer les données actuelles. Continuer ?")) {
-                            db = importedDb;
-                            saveDb();
-                            alert("Données restaurées !");
-                            renderSettingsView();
-                        }
-                    } catch(err) { alert("Fichier invalide"); }
-                };
-                reader.readAsText(file);
-            };
-
-            window.updateUserColor = (id, color) => { const u = db.users.find(u => u.id === id); if(u) { u.color = color; saveDb(); } };
-            window.deleteUser = (id) => { if(confirm("Supprimer l'athlète et son historique ?")) { db.users = db.users.filter(u => u.id !== id); db.logs = db.logs.filter(l => l.userId !== id); saveDb(); renderSettingsView(); } };
-            window.renameUser = (id) => { const u = db.users.find(u => u.id === id); const newName = prompt("Nouveau nom :", u.name); if(newName && newName !== u.name) { u.name = newName; saveDb(); renderSettingsView(); } };
-            window.deleteExercise = (id) => { if(confirm("Supprimer l'exercice ?")) { db.exercises = db.exercises.filter(e => e.id !== id); db.logs = db.logs.filter(l => l.exId !== id); saveDb(); renderSettingsView(); } };
-            window.renameExercise = (id) => { const e = db.exercises.find(e => e.id === id); const newName = prompt("Nouveau nom :", e.name); if(newName && newName !== e.name) { e.name = newName; saveDb(); renderSettingsView(); } };
+            const typeSelect = document.getElementById('newExType'), unitDiv = document.getElementById('unitSelectorDiv');
+            typeSelect.onchange = () => { if(typeSelect.value === 'cardio') unitDiv.classList.remove('hidden'); else unitDiv.classList.add('hidden'); };
+            document.getElementById('addUserBtn').onclick = () => { const n = document.getElementById('newUserName').value.trim(); if(n) { db.users.push({ id: generateId(), name: n, color: '#'+Math.floor(Math.random()*16777215).toString(16) }); saveData().then(renderSettingsView); } };
+            document.getElementById('addExBtn').onclick = () => { const n = document.getElementById('newExName').value.trim(), t = document.getElementById('newExType').value; let u = 'kg'; if(t === 'cardio') u = document.querySelector('input[name="newExUnit"]:checked').value; if(n) { db.exercises.push({ id: generateId(), name: n, type: t, unit: u }); saveData().then(renderSettingsView); } };
+            window.updateUserColor = (id, c) => { const u = db.users.find(u => u.id === id); if(u) { u.color = c; saveData(); } };
+            window.deleteUser = (id) => { if(confirm("Supprimer ?")) { db.users = db.users.filter(u => u.id !== id); db.logs = db.logs.filter(l => l.userId !== id); saveData().then(renderSettingsView); } };
+            window.renameUser = (id) => { const u = db.users.find(u => u.id === id), n = prompt("Nom:", u.name); if(n) { u.name = n; saveData().then(renderSettingsView); } };
+            window.deleteExercise = (id) => { if(confirm("Supprimer ?")) { db.exercises = db.exercises.filter(e => e.id !== id); db.logs = db.logs.filter(l => l.exId !== id); saveData().then(renderSettingsView); } };
+            window.renameExercise = (id) => { const e = db.exercises.find(e => e.id === id), n = prompt("Nom:", e.name); if(n) { e.name = n; saveData().then(renderSettingsView); } };
         }
 
         // --- INIT ---
-        if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js');
-        router('log');
+        renderNav();
+        loadData();
+
     </script>
 </body>
 </html>
