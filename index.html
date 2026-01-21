@@ -148,7 +148,7 @@
             });
         };
 
-        // Fonction de restauration depuis le fichier JSON (Sauvetage)
+        // Fonction de restauration depuis le fichier JSON
         const restoreFromBackup = (event) => {
             const file = event.target.files[0];
             if (!file) return;
@@ -200,7 +200,7 @@
                     <button onclick="router('log')" class="nav-btn flex flex-col items-center text-slate-400 hover:text-blue-600 transition" id="nav-log"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg><span class="text-[10px] mt-1 font-medium">Saisie</span></button>
                     <button onclick="router('history')" class="nav-btn flex flex-col items-center text-slate-400 hover:text-blue-600 transition" id="nav-history"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg><span class="text-[10px] mt-1 font-medium">Historique</span></button>
                     <button onclick="router('stats')" class="nav-btn flex flex-col items-center text-slate-400 hover:text-blue-600 transition" id="nav-stats"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"></path></svg><span class="text-[10px] mt-1 font-medium">Graphiques</span></button>
-                    <button onclick="router('settings')" class="nav-btn flex flex-col items-center text-slate-400 hover:text-blue-600 transition" id="nav-settings"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 00-1.066 2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg><span class="text-[10px] mt-1 font-medium">Gestion</span></button>
+                    <button onclick="router('settings')" class="nav-btn flex flex-col items-center text-slate-400 hover:text-blue-600 transition" id="nav-settings"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg><span class="text-[10px] mt-1 font-medium">Gestion</span></button>
                 `;
             }
         };
@@ -458,6 +458,7 @@
             applyFilters();
         }
 
+        // Modal Logic
         const modalContainer = document.getElementById('modalContainer');
         const modalContent = document.getElementById('modalContent');
         window.showEditModal = (id) => {
@@ -697,7 +698,7 @@
                     <div class="flex gap-2">
                         <button onclick="exportJson()" class="bg-blue-100 text-blue-700 px-3 py-2 rounded-lg text-sm font-bold flex-1">⬇ Exporter</button>
                         <button onclick="document.getElementById('importFile').click()" class="bg-slate-100 text-slate-700 px-3 py-2 rounded-lg text-sm font-bold flex-1">⬆ Restaurer JSON</button>
-                        <input type="file" id="importFile" class="hidden" accept=".json" onchange="restoreFromBackup(event)">
+                        <input type="file" id="importFile" class="hidden" accept="*/*" onchange="restoreFromBackup(event)">
                     </div>
                 </div>
             `;
